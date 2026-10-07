@@ -14,7 +14,7 @@
   // valeurs réellement présentes en base sont fusionnées au chargement, donc une
   // valeur ajoutée côté serveur apparaît sans toucher à ce fichier.
   const DECISIONS = ['Annulé', 'Relogement + remise'];
-  const METHODES = ['Carte', 'Virement', 'BAV', 'À vérifier'];
+  const METHODES = ['Carte', 'Virement', 'À vérifier'];
   const REMBOURSEMENTS = ['Oui', 'Non', 'Partiel'];
   const RELOGEMENT_STATUTS = ['À reloger', 'Relogé', 'Refusé par le client'];
   const REMISE_STATUTS = ['À appliquer', 'Appliquée'];
@@ -25,26 +25,69 @@
   // pas repris ici (il vit dans le HTML) : seule la correspondance
   // clé -> rendu compte, pour que l'ordre des cellules ne puisse pas dériver de
   // celui des entêtes.
+  // Un libellé de vague d'arrivée tient sur toute la largeur de l'écran. On le
+  // raccourcit pour l'affichage — le filtre, lui, garde le libellé entier.
+  function vague(statut) {
+    const v = String(statut || '').replace(/\s*-\s*Quartier Aquabulle\s*$/i, '').trim();
+    if (!v) return '';
+    if (/^Présent sur place$/i.test(v)) return 'Sur place';
+    if (/^Parti$/i.test(v)) return 'Parti';
+    return v.replace(/^Client en arrivée\s*/i, '')
+      .replace(/\s*inclus$/i, '')
+      .replace(/\bentre le\b\s*/i, '')
+      .replace(/\bdu\b\s*/i, '')
+      .replace(/\s*(et le|au|et)\s+(le\s+)?/i, ' → ')
+      .replace(/vendredi\s*/i, '')
+      .trim();
+  }
+
+  // Le PMS écrit littéralement « NULL » dans ses colonnes vides. L'afficher tel
+  // quel ferait croire à une valeur : on le traite comme une absence.
+  const txt = (v) => {
+    const s = String(v ?? '').trim();
+    return s === '' || /^null$/i.test(s) ? '' : s;
+  };
+  const telephone = (r) => txt(r.telephone_portable) || txt(r.telephone_fixe) || '';
+
+  // Les colonnes du tableau, dans l'ordre des <th> de la page. Le libellé vit
+  // dans le HTML ; ici seule compte la correspondance clé -> rendu, pour que
+  // l'ordre des cellules ne puisse pas dériver de celui des entêtes.
+  //
+  // L'onglet reste plus court que la liste générale, mais il porte désormais ce
+  // qu'il faut pour traiter un dossier sans changer d'écran : de quoi joindre le
+  // client, de quoi lui retrouver un hébergement équivalent, et de quoi savoir
+  // combien il a réglé.
   const COLONNES = [
     { col: 'client', valeur: (r) => [r.nom, r.prenom].filter(Boolean).join(' ') },
     { col: 'numero_reservation', valeur: (r) => r.numero_reservation },
-    { col: 'numero_emplacement', valeur: (r) => r.numero_emplacement },
+    { col: 'statut_client', valeur: (r) => vague(r.statut_client) },
+    { col: 'situation_desc', valeur: (r) => txt(r.situation_desc) },
+    { col: 'numero_emplacement', valeur: (r) => txt(r.numero_emplacement) },
+    { col: 'categorie_pms', valeur: (r) => txt(r.categorie_pms) },
+    { col: 'nombre_personnes', valeur: (r) => r.nombre_personnes, classe: 'num' },
     { col: 'date_debut_sejour', valeur: (r) => formatDate(r.date_debut_sejour) },
     { col: 'date_depart_sejour', valeur: (r) => formatDate(r.date_depart_sejour) },
+    { col: 'montant_sejour_ttc', valeur: (r) => formatMontant(r.montant_sejour_ttc), classe: 'num' },
     { col: 'montant_regle', valeur: (r) => formatMontant(r.montant_regle), classe: 'num' },
+    { col: 'telephone', valeur: telephone },
+    { col: 'email', valeur: (r) => txt(r.email) },
     { col: 'reponse_forms', valeur: (r) => (r.id_choix_client ? 'Oui' : '—') },
     { col: 'decision_client', valeur: (r) => r.decision_client },
     { col: 'methode_remboursement', valeur: (r) => r.methode_remboursement },
     { col: 'remboursement', valeur: (r) => r.remboursement },
     { col: 'relogement_statut', valeur: (r) => r.relogement_statut },
-    { col: 'relogement_hebergement', valeur: (r) => r.relogement_hebergement },
+    { col: 'relogement_hebergement', valeur: (r) => txt(r.relogement_hebergement) },
     { col: 'remise_statut', valeur: (r) => r.remise_statut },
     { col: 'remise_taux', valeur: (r) => formatTaux(r.remise_taux), classe: 'num' },
+    { col: 'action_camping', valeur: (r) => r.action_camping },
+    { col: 'commentaire_camping', valeur: (r) => txt(r.commentaire_camping) },
   ];
 
-  // Les six familles de filtres de l'onglet. Chaque entrée dit où sont ses
-  // chips, quel paramètre d'URL elle alimente, et si elle propose une case
-  // « pas encore traité » pour isoler les dossiers en attente.
+  // Les familles de filtres de l'onglet. Chaque entrée dit où sont ses chips,
+  // quel paramètre d'URL elle alimente, et si elle propose une case « pas encore
+  // traité » pour isoler les dossiers en attente. `champ` désigne la clé
+  // renvoyée par /filter-options, interrogé sur le seul périmètre du quartier :
+  // inutile de proposer au camping un type d'hébergement qui n'existe pas ici.
   const FILTRES = [
     { cle: 'reponseForms', param: 'reponse_forms', conteneur: 'fl-reponse-forms', statique: true },
     { cle: 'decisionClient', param: 'decision_client', conteneur: 'fl-decision-client', valeurs: DECISIONS, champ: 'decision_client', vide: 'Pas encore de réponse' },
@@ -52,6 +95,25 @@
     { cle: 'remboursement', param: 'remboursement', conteneur: 'fl-remboursement', valeurs: REMBOURSEMENTS, champ: 'remboursement', vide: 'Vide (non traité)' },
     { cle: 'relogementStatut', param: 'relogement_statut', conteneur: 'fl-relogement-statut', valeurs: RELOGEMENT_STATUTS, champ: 'relogement_statut', vide: 'Pas encore traité' },
     { cle: 'remiseStatut', param: 'remise_statut', conteneur: 'fl-remise-statut', valeurs: REMISE_STATUTS, champ: 'remise_statut', vide: 'Pas encore traitée' },
+    { cle: 'actionCamping', param: 'action_camping', conteneur: 'fl-action-camping', champ: 'action_camping', vide: 'Aucune action' },
+    { cle: 'statutClient', param: 'statut_client', conteneur: 'fl-statut-client', champ: 'statut_client',
+      repli: { bouton: 'fl-vague-toggle', compteur: 'fl-vague-count', nom: 'vagues' } },
+    { cle: 'situationDesc', param: 'situation_desc', conteneur: 'fl-situation-desc', champ: 'situation_desc' },
+    { cle: 'categoriePms', param: 'categorie_pms', conteneur: 'fl-categorie-pms', champ: 'categorie_pms',
+      repli: { bouton: 'fl-categorie-toggle', compteur: 'fl-categorie-count', nom: 'types' } },
+    { cle: 'nombrePersonnes', param: 'nombre_personnes', conteneur: 'fl-nombre-personnes', champ: 'nombre_personnes',
+      repli: { bouton: 'fl-personnes-toggle', compteur: 'fl-personnes-count', nom: 'tailles' } },
+  ];
+
+  // Les champs libres : dates et montants. Vides, ils n'entrent pas dans la
+  // requête — un filtre non renseigné ne doit rien restreindre.
+  const CHAMPS_LIBRES = [
+    { id: 'fl-arrivee-du', param: 'arrivee_du' },
+    { id: 'fl-arrivee-au', param: 'arrivee_au' },
+    { id: 'fl-depart-du', param: 'depart_du' },
+    { id: 'fl-depart-au', param: 'depart_au' },
+    { id: 'fl-regle-min', param: 'regle_min' },
+    { id: 'fl-regle-max', param: 'regle_max' },
   ];
 
   // Les compteurs d'avancement. Cliquer sur l'un d'eux applique exactement les
@@ -87,7 +149,7 @@
   const CHAMPS_EDITABLES = [
     'decision_client', 'methode_remboursement', 'remboursement',
     'relogement_statut', 'relogement_hebergement', 'remise_statut', 'remise_taux',
-    'commentaire_camping',
+    'action_camping', 'commentaire_camping',
   ];
 
   const el = (id) => document.getElementById(id);
@@ -149,7 +211,9 @@
   }
 
   function nbFiltresActifs() {
-    return FILTRES.reduce((n, f) => n + (valeursCochees(f).length ? 1 : 0), 0);
+    const parChips = FILTRES.reduce((n, f) => n + (valeursCochees(f).length ? 1 : 0), 0);
+    const parChamps = CHAMPS_LIBRES.filter((c) => (el(c.id).value || '').trim() !== '').length;
+    return parChips + parChamps;
   }
 
   function refreshFilterBadge() {
@@ -188,6 +252,46 @@
     if (f.vide) ajouter(VIDE, f.vide, 'filter-chip-special');
   }
 
+  // Les listes longues sont repliées par défaut : quatre types d'hébergement
+  // aujourd'hui, mais la liste suit les données et peut s'allonger. L'état
+  // affiché découle toujours de `hidden`, jamais d'une variable parallèle —
+  // impossible que chevron, aria-expanded et contenu divergent.
+  const replis = [];
+  function installerRepli(f) {
+    if (!f.repli) return;
+    const bouton = el(f.repli.bouton);
+    const compteur = el(f.repli.compteur);
+    const conteneur = conteneurDe(f);
+    if (!bouton || !compteur || !conteneur) return;
+
+    const fleche = bouton.querySelector('.filter-collapse-arrow');
+    const indice = document.createElement('span');
+    indice.className = 'filter-collapse-hint';
+    const espaceur = document.createElement('span');
+    espaceur.className = 'filter-collapse-spacer';
+    // Ordre imposé ici plutôt que subi du gabarit : libellé, décompte des
+    // valeurs, espaceur, puis chevron collé à droite.
+    bouton.querySelector('.filter-label').after(indice);
+    bouton.appendChild(espaceur);
+    bouton.appendChild(compteur);
+    bouton.appendChild(fleche);
+
+    const majCompteur = () => {
+      const total = conteneur.querySelectorAll('input[type="checkbox"]').length;
+      indice.textContent = total ? total + ' ' + f.repli.nom : '';
+      const n = valeursCochees(f).length;
+      compteur.textContent = String(n);
+      compteur.hidden = n === 0;
+    };
+    const appliquerEtat = () => bouton.setAttribute('aria-expanded', String(!conteneur.hidden));
+
+    bouton.addEventListener('click', () => { conteneur.hidden = !conteneur.hidden; appliquerEtat(); });
+    conteneur.addEventListener('change', majCompteur);
+    appliquerEtat();
+    majCompteur();
+    replis.push({ majCompteur, replier: () => { conteneur.hidden = true; appliquerEtat(); } });
+  }
+
   // Les chips statiques du HTML n'ont pas d'écouteur : on le pose ici pour que
   // le badge « Filtres » les compte comme les autres.
   function brancherChipsStatiques() {
@@ -203,8 +307,9 @@
 
   async function loadFilterOptions() {
     try {
-      const data = await (await fetch('/api/sejours/filter-options')).json();
+      const data = await (await fetch('/api/sejours/filter-options?perimetre=aquabulle')).json();
       FILTRES.forEach((f) => renderChips(f, f.champ ? data[f.champ] : null));
+      replis.forEach((r) => r.majCompteur());
       if (typeof data.remise_taux_defaut === 'number') tauxRemiseDefaut = data.remise_taux_defaut;
     } catch (err) {
       // Sans les options on garde les valeurs du métier : l'onglet reste
@@ -216,6 +321,7 @@
 
   // Coche exactement les cases décrites, décoche tout le reste.
   function appliquerSelection(selection) {
+    CHAMPS_LIBRES.forEach((c) => { el(c.id).value = ''; });
     FILTRES.forEach((f) => {
       const voulues = selection[f.cle] || [];
       cases(f).forEach((input) => {
@@ -223,6 +329,7 @@
         input.closest('.filter-chip').classList.toggle('checked', input.checked);
       });
     });
+    replis.forEach((r) => r.majCompteur());
     refreshFilterBadge();
   }
 
@@ -237,6 +344,10 @@
     FILTRES.forEach((f) => {
       const v = valeursCochees(f);
       if (v.length) params.set(f.param, v.join('|'));
+    });
+    CHAMPS_LIBRES.forEach((c) => {
+      const v = (el(c.id).value || '').trim();
+      if (v !== '') params.set(c.param, v);
     });
     return params;
   }
@@ -575,9 +686,18 @@
 
   function init() {
     brancherChipsStatiques();
+    FILTRES.forEach(installerRepli);
+    // Un champ de date ou de montant compte comme un filtre actif : le badge
+    // doit le dire, sinon on cherche longtemps pourquoi la liste est courte.
+    CHAMPS_LIBRES.forEach((c) => el(c.id).addEventListener('input', refreshFilterBadge));
     refreshFilterBadge();
 
-    el('filters-toggle').addEventListener('click', () => { filtersPanel.hidden = !filtersPanel.hidden; });
+    el('filters-toggle').addEventListener('click', () => {
+      filtersPanel.hidden = !filtersPanel.hidden;
+      // À la réouverture, les listes longues se referment : sinon le panneau
+      // rouvre déplié sans qu'on l'ait demandé.
+      if (!filtersPanel.hidden) replis.forEach((r) => r.replier());
+    });
     el('filters-apply').addEventListener('click', () => { filtersPanel.hidden = true; appliquerFiltres(); });
     el('filters-reset').addEventListener('click', () => {
       appliquerSelection({});

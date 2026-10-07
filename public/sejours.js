@@ -53,8 +53,8 @@
     ['montant_regle', 'Réglé'],
     ['assurance_annulation', 'Assurance'],
     ['fidelity_use', 'Fidélité'],
-    ['remboursement', 'Remboursement / BAV'],
-    ['methode_remboursement', 'Méthode remb. / BAV'],
+    ['remboursement', 'Remboursement'],
+    ['methode_remboursement', 'Méthode remb.'],
     ['decision_client', 'Décision client'],
     ['action_camping', 'Action camping'],
     ['statut_client', 'Statut client'],
@@ -715,7 +715,6 @@
   const AIDES_METHODE = {
     'Carte': 'Remboursement automatique sur le moyen de paiement utilisé.',
     'Virement': 'Virement bancaire à effectuer. L\'IBAN se trouve dans la réponse au formulaire.',
-    'BAV': 'Bon à valoir à générer et à envoyer au client, puis passer Remboursement à « Oui ».',
     'À vérifier': 'La réponse du client ne correspond pas aux paiements enregistrés au PMS. Contrôler le dossier dans le PMS, puis choisir la méthode ici.',
   };
 
@@ -1374,16 +1373,11 @@
   // cliquable de la colonne "Réponse forms".
   // -------------------------------------------------------------------------
 
-  // Mêmes libellés que dans les vues "A répondu" / "Match incorrect" et que dans
-  // l'export : formulaire 1 le décalage, formulaire 2 les évacués,
-  // formulaire 3 les No Show.
-  //
-  // Chaque formulaire pose ses propres questions, et ne demande de coordonnées
-  // bancaires que s'il peut déboucher sur un remboursement — ce que le
-  // formulaire 3 ne fait jamais, ses deux réponses aboutissant à un bon à valoir.
-  // À ajuster quand les formulaires seront connus : `questions` liste les champs
-  // réellement posés par ce formulaire, `remboursement` dit s'il demande les
-  // coordonnées bancaires. Les champs non listés sont masqués dans la pop-in.
+  // Un seul formulaire dans cette crise, celui du relogement. La structure reste
+  // une liste pour le jour où une seconde vague de formulaires serait lancée :
+  // `questions` liste les champs réellement posés, `remboursement` dit si les
+  // coordonnées bancaires sont demandées. Les champs non listés sont masqués
+  // dans la pop-in.
   const FORMULAIRES = [
     { cle: 'id_f1', libelle: 'Relogement', questions: ['choix'], remboursement: true },
   ];

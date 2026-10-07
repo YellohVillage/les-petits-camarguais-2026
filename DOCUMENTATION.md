@@ -136,6 +136,14 @@ deux il décrit, et aurait rendu invisible le dossier relogé dont la remise tra
 c'est la valeur de départ : les deux filtres correspondants sont donc les deux
 listes de travail du camping.
 
+#### `situation` et `situation_desc`
+
+Situation du client au moment de l'incident, telle que la voit le PMS :
+**Réservation ferme** (904), **Check-in** (104, sur place) et **Check-out** (10,
+reparti). À ne pas confondre avec `statut_client`, qui est le segment de mailing
+du siège. Les deux se recoupent très largement, et leurs rares désaccords sont
+des anomalies de saisie à faire trancher par le camping, pas des cas métier.
+
 ### `choix_client` — les réponses au formulaire
 
 **Un seul formulaire pour cette crise**, déposé sous le nom `relogement.xlsx`
@@ -251,8 +259,23 @@ exploitable**.
 > sur cinq** présentait une contradiction entre la déclaration du client et le
 > PMS. `À vérifier` signifie « contrôler le dossier avant de rembourser ».
 
+**Pas de bon à valoir dans cette crise.** Les trois méthodes sont Carte, Virement
+et À vérifier. La valeur `BAV` existait au Brasilia et aux Grands Pins et avait
+été reprise par copie ; le formulaire ne la propose pas ici et le camping n'en a
+pas fait un geste commercial. La laisser affichée n'aurait offert au camping
+qu'un choix sans suite opérationnelle. Un contrôle de `qa_formulaire` vérifie
+désormais qu'aucune mention n'est revenue, code et écrans compris.
+
 La méthode est **figée au rapprochement**. Si le camping la corrige à la main, sa
 saisie fait foi et rien n'est recalculé.
+
+**Un relogement n'a pas de méthode de remboursement**, et la case reste vide. Ce
+n'est pas un oubli : le client relogé n'est pas remboursé, il obtient une remise.
+Le formulaire ne lui pose d'ailleurs pas la question du mode de règlement, son
+champ revient donc toujours vide. Sans cette règle, le calcul concluait
+« À vérifier » pour tous les relogés et noyait les vrais dossiers à contrôler —
+ceux d'une annulation dont la déclaration du client contredit les paiements du
+PMS.
 
 ### Le périmètre de la crise
 
@@ -366,10 +389,27 @@ colonne, masquage de colonnes et export Excel. La fiche s'ouvre en pop-in.
 **Dossiers Aquabulle** — la vue de travail des 304 dossiers du quartier sinistré,
 et seuls eux. En tête, neuf compteurs d'avancement cliquables : chacun applique exactement
 les filtres qui produisent les lignes qu'il compte, donc le chiffre affiché et la
-liste obtenue ne peuvent pas se contredire. En dessous, quinze colonnes centrées
-sur l'avancement et six filtres d'étape, dont « pas encore traité ». Le bouton
-« Suivre » ouvre une pop-in resserrée sur les seules étapes du dossier ; la fiche
-complète reste dans **Liste séjours**, qui demeure la vue exhaustive.
+liste obtenue ne peuvent pas se contredire. En dessous, vingt-trois colonnes et onze
+familles de filtres réparties en trois groupes : *Où en est le dossier* (réponse,
+décision, méthode, remboursement, relogement, remise, action du camping, avec
+partout une case « pas encore traité »), *Qui est le client* (vague d'arrivée,
+situation au moment de l'incident, type d'hébergement, nombre de personnes) et
+*Dates et montants* (arrivée, départ, montant réglé). Les listes longues sont
+repliées par défaut et annoncent ce qu'elles contiennent.
+
+Les colonnes vont au-delà du seul avancement : téléphone et email pour joindre le
+client, type d'hébergement et nombre de personnes pour lui retrouver un
+équivalent, montants TTC et réglé pour instruire un remboursement. Le but est
+qu'un dossier se traite sans changer d'écran.
+
+Les options de filtre sont demandées sur le seul périmètre du quartier
+(`/api/sejours/filter-options?perimetre=aquabulle`) : Aquabulle compte 4 types
+d'hébergement quand le camping en compte 20, et proposer les 16 autres n'aurait
+fait qu'allonger la liste sans jamais rien ramener.
+
+Le bouton **« Suivre »** ouvre une pop-in resserrée sur les seules étapes du
+dossier ; la fiche complète reste dans **Liste séjours**, qui demeure la vue
+exhaustive.
 
 Cet onglet n'ajoute aucun droit : il réutilise les mêmes filtres, le même export
 et la même route d'écriture que la liste générale, avec la contrainte de
@@ -409,6 +449,15 @@ relogement et de la remise, commentaires), absentes de la correspondance, ni les
 quatre colonnes que le fichier porte vides mais que le camping renseigne
 (`remboursement`, les deux dates de relogement, `camping_relogement`) : sans cette
 protection, chaque mise à jour effacerait le travail du camping.
+
+**La recette tourne en cinq suites, 389 contrôles.** `qa_master` (la table
+maître), `qa_formulaire` (les règles de calcul, sans serveur), `qa_aquabulle`
+(l'onglet dédié), `qa_chaine` (la chaîne complète : import d'un vrai fichier
+Excel fabriqué pour l'occasion, delta entre deux imports, rapprochement,
+calculs, étapes du dossier, garde-fous) et `qa_front` (les cinq écrans pilotés
+dans un vrai DOM : affichage, pagination, tri, filtres, pop-ins, masquage de
+colonnes). Les suites qui écrivent prennent une photo avant et restaurent après,
+y compris en cas d'échec.
 
 **Les attentes chiffrées des tests se recomptent, elles ne s'écrivent pas en
 dur.** La répartition des segments de statut est relue dans le fichier maître à

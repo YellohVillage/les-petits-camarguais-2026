@@ -73,7 +73,80 @@
           <label class="filter-label">Suivi de la remise</label>
           <div id="fl-remise-statut" class="filter-chips"></div>
         </div>
+        <div class="filter-block">
+          <label class="filter-label">Action du camping</label>
+          <div id="fl-action-camping" class="filter-chips"></div>
+        </div>
       </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Qui est le client</h3>
+        <div class="filters-grid">
+        <div class="filter-block">
+          <!-- Les vagues d'arrivée : c'est par elles que le camping échelonne
+               son travail, les envois de mails étant eux-mêmes échelonnés. -->
+          <button type="button" id="fl-vague-toggle" class="filter-collapse" aria-expanded="false">
+            <span class="filter-label">Vague d'arrivée</span>
+            <span id="fl-vague-count" class="filters-count" hidden>0</span>
+            <span class="filter-collapse-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="fl-statut-client" class="filter-chips" hidden></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Situation au moment de l'incident</label>
+          <div id="fl-situation-desc" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <button type="button" id="fl-categorie-toggle" class="filter-collapse" aria-expanded="false">
+            <span class="filter-label">Type d'hébergement</span>
+            <span id="fl-categorie-count" class="filters-count" hidden>0</span>
+            <span class="filter-collapse-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="fl-categorie-pms" class="filter-chips" hidden></div>
+        </div>
+        <div class="filter-block">
+          <button type="button" id="fl-personnes-toggle" class="filter-collapse" aria-expanded="false">
+            <span class="filter-label">Nombre de personnes</span>
+            <span id="fl-personnes-count" class="filters-count" hidden>0</span>
+            <span class="filter-collapse-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="fl-nombre-personnes" class="filter-chips" hidden></div>
+        </div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Dates et montants</h3>
+        <div class="filters-grid">
+        <div class="filter-block">
+          <label class="filter-label">Arrivée entre</label>
+          <div class="filter-inline">
+            <input type="date" id="fl-arrivee-du" />
+            <span>et le</span>
+            <input type="date" id="fl-arrivee-au" />
+          </div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Départ entre</label>
+          <div class="filter-inline">
+            <input type="date" id="fl-depart-du" />
+            <span>et le</span>
+            <input type="date" id="fl-depart-au" />
+          </div>
+        </div>
+        <div class="filter-block">
+          <!-- Le montant réglé commande le remboursement : un séjour à 0 € n'a
+               rien à rendre, et les plus gros montants se traitent en premier. -->
+          <label class="filter-label">Montant réglé (€)</label>
+          <div class="filter-inline">
+            <input type="number" step="any" id="fl-regle-min" placeholder="min" />
+            <span>à</span>
+            <input type="number" step="any" id="fl-regle-max" placeholder="max" />
+          </div>
+        </div>
+        </div>
+      </div>
+
       <div class="filters-actions">
         <button type="button" id="filters-reset" class="btn-secondary">Réinitialiser</button>
         <button type="button" id="filters-apply" class="btn-primary">Appliquer les filtres</button>
@@ -86,19 +159,28 @@
           <tr>
             <th>Client</th>
             <th>N° résa</th>
+            <th>Vague</th>
+            <th>Situation</th>
             <th>Emplac.</th>
+            <th>Hébergement</th>
+            <th>Pers.</th>
             <th>Arrivée</th>
             <th>Départ</th>
+            <th>TTC</th>
             <th>Réglé</th>
+            <th>Téléphone</th>
+            <th>Email</th>
             <th>Réponse</th>
             <th>Décision</th>
             <th>Méthode remb.</th>
             <th>Remb. fait</th>
             <th>Relogement</th>
-            <th>Hébergement</th>
+            <th>Hébergement d'accueil</th>
             <th>Remise</th>
             <th>Taux</th>
-            <th>Action</th>
+            <th>Action camping</th>
+            <th>Commentaire</th>
+            <th>Suivi</th>
           </tr>
         </thead>
         <tbody id="table-body"></tbody>
@@ -139,7 +221,6 @@
               <option value=""></option>
               <option value="Carte">Carte</option>
               <option value="Virement">Virement</option>
-              <option value="BAV">BAV</option>
               <option value="À vérifier">À vérifier</option>
             </select>
           </div>
@@ -184,6 +265,13 @@
             <input type="number" step="any" min="0" max="100" id="f-remise_taux" />
           </div>
 
+          <div class="modal-field">
+            <label for="f-action_camping">Action du camping</label>
+            <select id="f-action_camping">
+              <option value=""></option>
+              <option value="A rappeler">A rappeler</option>
+            </select>
+          </div>
           <div class="modal-field full">
             <label for="f-commentaire_camping">Commentaire</label>
             <textarea id="f-commentaire_camping" rows="2"></textarea>

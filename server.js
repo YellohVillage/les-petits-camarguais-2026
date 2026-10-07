@@ -142,9 +142,12 @@ const FORM_IMPORT_FIELDS = [
 // ---------------------------------------------------------------------------
 const METHODE_CARTE = 'Carte';
 const METHODE_VIREMENT = 'Virement';
-const METHODE_BAV = 'BAV';
 const METHODE_A_VERIFIER = 'À vérifier';
-const METHODES_REMBOURSEMENT = [METHODE_CARTE, METHODE_VIREMENT, METHODE_BAV, METHODE_A_VERIFIER];
+// Pas de bon à valoir dans cette crise : le formulaire ne le propose pas, et le
+// camping ne l'a pas retenu comme geste commercial. La valeur existait au
+// Brasilia et aux Grands Pins ; la laisser ici n'aurait fait qu'offrir au
+// camping un choix qui n'a pas de suite opérationnelle.
+const METHODES_REMBOURSEMENT = [METHODE_CARTE, METHODE_VIREMENT, METHODE_A_VERIFIER];
 
 // Reconnaissance d'un règlement par carte. Un remboursement sur la carte n'est
 // possible que si le séjour a été réglé UNIQUEMENT par carte : tout le reste —
@@ -220,28 +223,27 @@ function clientDeclareCarte(methodRemb) {
 function calculerMethodeRemboursement(reponse, modesPaiement) {
   if (!reponse) return null;
 
-  // 1. Un bon à valoir prime sur tout : le mode de règlement d'origine n'entre
-  // pas en compte, le camping émet le bon et l'envoie au client.
-  const choix = reponse.choix || '';
-  // Au Les Petits Camarguais, seule la mention explicite d'un bon à valoir vaut BAV. Le
-  // client qui répond « J'arrive au camping le 25 juillet » n'est pas dans ce
-  // cas : il régularise sur place, et s'il réclame les nuits perdues il l'a dit
-  // dans la question sur la méthode de remboursement — le calcul normal
-  // s'applique donc à lui comme aux autres.
-  if (/Bon à valoir/i.test(choix)) return METHODE_BAV;
+  // 0. Un client relogé n'est pas remboursé : il obtient une remise sur place.
+  // La question du mode de règlement ne lui est d'ailleurs pas posée dans le
+  // formulaire, son champ revient donc toujours vide. Sans cette règle, le
+  // calcul conclurait « À vérifier » pour tous les relogés et noierait les vrais
+  // dossiers à contrôler — ceux d'une annulation dont la déclaration du client
+  // contredit les paiements du PMS. Une case vide dit ici la vérité : il n'y a
+  // rien à rembourser.
+  if (calculerDecisionClient(reponse) === DECISION_RELOGEMENT) return null;
 
-  // 2. Aucun paiement enregistré au PMS : rien à comparer.
+  // 1. Aucun paiement enregistré au PMS : rien à comparer.
   const toutCarte = reglementIntegralementParCarte(modesPaiement);
   if (toutCarte === null) return METHODE_A_VERIFIER;
 
-  // 3. Le client n'a pas indiqué son mode de règlement : rien à comparer non plus.
+  // 2. Le client n'a pas indiqué son mode de règlement : rien à comparer non plus.
   const declareCarte = clientDeclareCarte(reponse.method_remb);
   if (declareCarte === null) return METHODE_A_VERIFIER;
 
-  // 4. Les deux sources se contredisent : on n'acte rien.
+  // 3. Les deux sources se contredisent : on n'acte rien.
   if (declareCarte !== toutCarte) return METHODE_A_VERIFIER;
 
-  // 5. Les deux sources sont d'accord.
+  // 4. Les deux sources sont d'accord.
   return toutCarte ? METHODE_CARTE : METHODE_VIREMENT;
 }
 
@@ -252,7 +254,7 @@ function calculerMethodeRemboursement(reponse, modesPaiement) {
 // déduit de la question de fond, qui diffère selon le formulaire :
 //   - les deux formulaires des Petits Camarguais posent la même question :
 //     « Que souhaitez-vous faire ? », dont les réponses possibles sont le
-//     remboursement, le bon à valoir, ou l'arrivée décalée au 25 juillet.
+//     remboursement ou le relogement.
 //
 // Un cas n'entre dans aucune des deux valeurs et doit rester vide : les évacués
 // dont le séjour se terminait avant la réouverture. Le formulaire ne leur a pas
@@ -542,9 +544,12 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
 
           // La méthode de remboursement est déterminée ici, une fois pour
           // toutes : le choix du client confronté aux paiements du PMS.
-          const methode = calculerMethodeRemboursement(insertPayload, matchedModesPaiement);
-          summary.methodes[methode] = (summary.methodes[methode] || 0) + 1;
           const decision = calculerDecisionClient(insertPayload);
+          const methode = calculerMethodeRemboursement(insertPayload, matchedModesPaiement);
+          // Un relogement n'a pas de méthode : on le dit explicitement dans le
+          // récapitulatif plutôt que d'afficher une ligne « null ».
+          const libelleMethode = methode === null ? 'Sans objet (relogement)' : methode;
+          summary.methodes[libelleMethode] = (summary.methodes[libelleMethode] || 0) + 1;
 
           const { error: updateError } = await supabase
             .from('master_sejours')
@@ -1290,14 +1295,6 @@ const REMBOURSEMENT_VALUES = new Set(['Oui', 'Non', 'Partiel']);
 // camping signale un client qu'il ne veut pas oublier de rappeler.
 const ACTIONS_CAMPING = ['A rappeler'];
 
-// Familles issues du regroupement des libellés saisis dans l'application v1.
-// Elles sont présentées en tête du filtre ; les libellés que le regroupement
-// n'a pas su trancher restent proposés ensuite, par ordre alphabétique.
-const SUIVIS_REMBOURSEMENT_CONNUS = [
-  'Remboursé', 'Remboursé partiellement', 'BAV émis', 'BAV à faire',
-  'Modification de dates', 'Répondu', 'Débiteur / facturé',
-];
-
 // Valeur envoyée par le navigateur pour filtrer sur « pas encore renseigné ».
 // Volontairement encadrée de doubles tirets bas pour ne jamais entrer en
 // collision avec une valeur métier saisie par le camping.
@@ -1570,22 +1567,31 @@ app.get('/api/sejours/filter-options', async (req, res) => {
     const remboursements = new Set();
     const situations = new Set();
     const statutsEmplacement = new Set();
+    const actionsCamping = new Set();
     const methodes = new Set();
     const decisions = new Set();
     let minTtc = null, maxTtc = null, minRegle = null, maxRegle = null;
     let minArrivee = null, maxArrivee = null, minDepart = null, maxDepart = null;
 
+    // L'onglet Aquabulle demande les valeurs de son seul périmètre : proposer
+    // au camping des catégories d'hébergement ou des vagues d'arrivée qui
+    // n'existent pas dans le quartier ne ferait qu'allonger la liste de cases à
+    // cocher sans jamais rien ramener.
+    const limiterAuxAquabulle = req.query.perimetre === 'aquabulle';
+
     for (let from = 0; ; from += CHUNK) {
-      const { data, error } = await supabase
+      let requete = supabase
         .from('master_sejours')
-        .select('nombre_personnes, statut_client, categorie_pms, quartier, relogement_statut, remise_statut, camping_relogement, remboursement, methode_remboursement, decision_client, modes_paiement, montant_sejour_ttc, montant_regle, date_debut_sejour, date_depart_sejour, situation_desc, statut_emplacement')
-        .range(from, from + CHUNK - 1);
+        .select('nombre_personnes, statut_client, categorie_pms, quartier, relogement_statut, remise_statut, camping_relogement, remboursement, methode_remboursement, decision_client, modes_paiement, montant_sejour_ttc, montant_regle, date_debut_sejour, date_depart_sejour, situation_desc, statut_emplacement, action_camping');
+      if (limiterAuxAquabulle) requete = requete.eq('quartier', QUARTIER_AQUABULLE);
+      const { data, error } = await requete.range(from, from + CHUNK - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
 
       for (const r of data) {
         if (r.nombre_personnes !== null) nbPersonnes.add(r.nombre_personnes);
         if (r.statut_client) statuts.add(r.statut_client);
+        if (r.action_camping) actionsCamping.add(r.action_camping);
         if (r.categorie_pms) categories.add(r.categorie_pms);
         if (r.quartier) quartiers.add(r.quartier);
         if (r.relogement_statut) relogementStatuts.add(r.relogement_statut);
@@ -1644,6 +1650,9 @@ app.get('/api/sejours/filter-options', async (req, res) => {
       camping_relogement: [...campings].sort(),
       situation_desc: [...situations].sort(),
       statut_emplacement: [...statutsEmplacement].sort(),
+      // Les actions du camping sont proposées d'emblée, la colonne se
+      // remplissant au fil de la gestion de crise.
+      action_camping: [...new Set([...ACTIONS_CAMPING, ...actionsCamping])],
       // Les 3 valeurs métier sont toujours proposées, même si aucune ligne ne
       // les porte encore (la colonne se remplit au fil de la gestion de crise).
       remboursement: [...new Set([...REMBOURSEMENT_VALUES, ...remboursements])],
