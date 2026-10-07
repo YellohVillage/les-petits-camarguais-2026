@@ -1,5 +1,5 @@
-// Onglet « Dossiers Aquabulle » : la vue de travail des 291 séjours concernés
-// par le formulaire. Volontairement plus pauvre que la liste générale — pas de
+// Onglet « Dossiers Aquabulle » : la vue de travail des séjours du quartier
+// sinistré, seuls concernés par le formulaire. Volontairement plus pauvre que la liste générale — pas de
 // masquage de colonnes, pas de filtres de dates ni de montants — parce qu'elle
 // répond à une seule question : où en est chaque dossier. La liste générale
 // reste la vue exhaustive, rien n'y est caché.

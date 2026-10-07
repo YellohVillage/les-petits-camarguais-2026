@@ -260,11 +260,20 @@ Le camping compte quatre quartiers. **Secret de Camargue est fermé.** Le sinist
 de la nuit du 6 au 7 octobre 2026 touche **Aquabulle** ; **Village du Port** et
 **Côté Village** servent au relogement.
 
-Seuls les clients d'Aquabulle en arrivée à partir du 08/10 reçoivent le
-formulaire : **291 séjours**, identifiés par `statut_client` =
-« Client en arrivée à partir du 08/10 - Quartier Aquabulle ». C'est ce segment,
-renseigné par le siège, qui fait foi — pas un calcul quartier + date, qui en
-trouve 288 et raterait donc trois dossiers.
+Seuls les clients d'Aquabulle reçoivent le formulaire : **304 séjours**, soit les
+13 présents sur place dans le quartier et les 291 arrivées à venir. Le périmètre
+est défini par `quartier = 'Aquabulle'`.
+
+> **Pourquoi le quartier et pas le segment du siège.** L'onglet reposait d'abord
+> sur `statut_client` = « Client en arrivée à partir du 08/10 - Quartier
+> Aquabulle », 291 dossiers. À la mise à jour suivante du fichier maître, le
+> siège a scindé ce segment en trois libellés par vague d'arrivée (08–15/10 : 25,
+> 16–23/10 : 158, 24/10–01/11 : 108) pour échelonner ses envois. L'ancien libellé
+> a disparu : l'onglet se serait vidé d'un coup, sans erreur ni alerte. Le
+> quartier vient du PMS et ne se renomme pas au rythme des campagnes d'emailing.
+> **Règle générale : ne jamais faire reposer un périmètre de travail sur un
+> libellé de segment marketing.** Les vagues restent filtrables par « Statut
+> client » dans la liste générale.
 
 Les autres clients reçoivent une remise de 20 % appliquée d'office par le
 camping, hors de l'outil. Ils restent visibles dans la liste générale, rien n'est
@@ -354,8 +363,8 @@ reprises.
 **Liste séjours** — le référentiel complet, avec recherche, filtres, tri par
 colonne, masquage de colonnes et export Excel. La fiche s'ouvre en pop-in.
 
-**Dossiers Aquabulle** — la vue de travail des 291 dossiers concernés, et seuls
-eux. En tête, neuf compteurs d'avancement cliquables : chacun applique exactement
+**Dossiers Aquabulle** — la vue de travail des 304 dossiers du quartier sinistré,
+et seuls eux. En tête, neuf compteurs d'avancement cliquables : chacun applique exactement
 les filtres qui produisent les lignes qu'il compte, donc le chiffre affiché et la
 liste obtenue ne peuvent pas se contredire. En dessous, quinze colonnes centrées
 sur l'avancement et six filtres d'étape, dont « pas encore traité ». Le bouton
@@ -389,6 +398,23 @@ contenant des IBAN en clair ne doit pas circuler sans raison.
 
 **Ne jamais toucher aux bases des autres campings.** Les Grands Pins et Le
 Brasilia sont en service et leurs données sont vivantes.
+
+**Le fichier maître est remis à jour en cours de crise.** `scripts/diff_master.js`
+compare fichier et base sans rien écrire — colonnes, séjours, puis valeurs
+colonne par colonne ; `scripts/update_master.js` applique, en simulation par
+défaut. Les deux partagent `scripts/map_master.js` avec l'import initial, pour
+qu'« aligné » veuille dire la même chose partout. La mise à jour **ne touche
+jamais** les colonnes de traitement de crise (décision, méthode, suivi du
+relogement et de la remise, commentaires), absentes de la correspondance, ni les
+quatre colonnes que le fichier porte vides mais que le camping renseigne
+(`remboursement`, les deux dates de relogement, `camping_relogement`) : sans cette
+protection, chaque mise à jour effacerait le travail du camping.
+
+**Les attentes chiffrées des tests se recomptent, elles ne s'écrivent pas en
+dur.** La répartition des segments de statut est relue dans le fichier maître à
+chaque exécution de `qa_master.js`. La version précédente les figeait : le
+redécoupage du siège a produit sept faux échecs qui laissaient croire à un import
+raté.
 
 **Les migrations de schéma sont le vrai danger**, pas le code. Ajouter une
 colonne nullable est sans effet sur l'existant. Renommer, supprimer ou

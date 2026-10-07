@@ -282,10 +282,17 @@ const REMISE_TAUX_DEFAUT = 20;
 // ceux des autres quartiers reçoivent une remise de 20 % appliquée d'office, le
 // camping s'en occupe seul.
 //
-// On s'appuie sur le segment établi par le siège plutôt que sur un calcul
-// maison « quartier + date » : le segment fait foi, et il inclut trois séjours
-// arrivant le 7 que la date seule exclurait. 291 dossiers.
-const SEGMENT_AQUABULLE = 'Client en arrivée à partir du 08/10 - Quartier Aquabulle';
+// Le périmètre est le QUARTIER, pas le segment de mailing du siège. 304
+// dossiers : les 13 clients présents sur place dans le quartier et les 291
+// arrivées à venir.
+//
+// L'onglet reposait d'abord sur le segment « Client en arrivée à partir du 08/10
+// - Quartier Aquabulle ». Le siège l'a scindé en quatre libellés par vague
+// d'arrivée dès la mise à jour suivante du fichier maître, et l'onglet se serait
+// vidé d'un coup. Le quartier, lui, est une donnée du PMS : il ne se renomme pas
+// au rythme des campagnes d'emailing. Les vagues restent filtrables par
+// « Statut client » dans la liste générale.
+const QUARTIER_AQUABULLE = 'Aquabulle';
 
 function calculerDecisionClient(reponse) {
   if (!reponse) return null;
@@ -1924,7 +1931,7 @@ const EXPORT_TEXT_COLUMNS = new Set([
   'banque_iban', 'banque_bic',
 ]);
 
-// GET /api/aquabulle : la liste des 291 dossiers à traiter, et seulement eux.
+// GET /api/aquabulle : la liste des 304 dossiers à traiter, et seulement eux.
 // Réutilise exactement les filtres et le tri de la liste générale — un seul
 // code de filtrage à maintenir — en ajoutant la contrainte de périmètre.
 app.get('/api/aquabulle', async (req, res) => {
@@ -1936,7 +1943,7 @@ app.get('/api/aquabulle', async (req, res) => {
 
     const from = (page - 1) * pageSize;
     const { data, error, count } = await buildSejoursQuery(filters, { count: true })
-      .eq('statut_client', SEGMENT_AQUABULLE)
+      .eq('quartier', QUARTIER_AQUABULLE)
       .range(from, from + pageSize - 1);
     if (error) throw error;
 
@@ -1948,7 +1955,7 @@ app.get('/api/aquabulle', async (req, res) => {
 });
 
 // GET /api/aquabulle/avancement : les compteurs d'étape affichés en tête
-// d'onglet. Calculés côté serveur pour que l'écran n'ait pas à ramener les 291
+// d'onglet. Calculés côté serveur pour que l'écran n'ait pas à ramener les 304
 // lignes rien que pour les compter.
 app.get('/api/aquabulle/avancement', async (req, res) => {
   try {
@@ -1957,7 +1964,7 @@ app.get('/api/aquabulle/avancement', async (req, res) => {
       const { data, error } = await supabase
         .from('master_sejours')
         .select('id_choix_client, decision_client, methode_remboursement, remboursement, relogement_statut, remise_statut')
-        .eq('statut_client', SEGMENT_AQUABULLE)
+        .eq('quartier', QUARTIER_AQUABULLE)
         .order('id')
         .range(de, de + 999);
       if (error) throw error;
@@ -2001,7 +2008,7 @@ app.get('/api/sejours/export', async (req, res) => {
     const rows = [];
     for (let from = 0; ; from += CHUNK) {
       let requete = buildSejoursQuery(filters);
-      if (limiterAuxAquabulle) requete = requete.eq('statut_client', SEGMENT_AQUABULLE);
+      if (limiterAuxAquabulle) requete = requete.eq('quartier', QUARTIER_AQUABULLE);
       const { data, error } = await requete.range(from, from + CHUNK - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
