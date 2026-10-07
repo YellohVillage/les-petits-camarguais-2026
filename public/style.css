@@ -48,12 +48,19 @@ body {
   gap: 20px;
 }
 
-/* Logo du camping : contrairement à celui des Grands Pins, le logo des Petits Camarguais
-   est entièrement blanc. Il se pose donc directement sur le bandeau sombre —
-   surtout pas sur une pastille blanche, où il deviendrait invisible. */
+/* Logo du camping. Le vrai logo des Petits Camarguais est l'inverse de celui du
+   Brasilia : son texte est bleu foncé et sa vignette est pensée pour un fond
+   clair. Posé directement sur le bandeau sombre, le nom du camping devient
+   illisible. D'où la pastille blanche — exactement ce qu'il ne fallait PAS faire
+   au Brasilia, dont le logo est entièrement blanc. La règle n'est donc pas
+   « pastille » ou « pas de pastille », mais : regarder le logo avant de choisir. */
 .logo-camping {
-  height: 56px;
+  height: 54px;
   width: auto;
+  display: block;
+  background: #FFFFFF;
+  padding: 6px 10px;
+  border-radius: 10px;
 }
 
 .logo-yelloh {
