@@ -332,6 +332,12 @@
     }
 
     container.addEventListener('mousedown', (e) => {
+      // Le drapeau « on vient de glisser » est levé ici, avant même de savoir si
+      // le geste concerne le tableau : un glissé qui s'achève hors du conteneur
+      // ne produit aucun clic, donc rien ne vient le consommer. Sans cette
+      // remise à zéro, le clic suivant — sur un bouton, par exemple — était
+      // avalé comme s'il appartenait au glissé précédent.
+      hasDragged = false;
       if (e.target.closest('button, a, input, select, textarea')) return;
       onDown(e.pageX);
     });

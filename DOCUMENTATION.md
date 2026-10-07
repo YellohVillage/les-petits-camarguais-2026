@@ -407,9 +407,20 @@ Les options de filtre sont demandées sur le seul périmètre du quartier
 d'hébergement quand le camping en compte 20, et proposer les 16 autres n'aurait
 fait qu'allonger la liste sans jamais rien ramener.
 
-Le bouton **« Suivre »** ouvre une pop-in resserrée sur les seules étapes du
-dossier ; la fiche complète reste dans **Liste séjours**, qui demeure la vue
-exhaustive.
+Le tableau se manipule exactement comme celui de la liste séjours : repère
+**« i »** à gauche de chaque ligne, bouton **« Modifier »** à droite — les deux
+ouvrent la même pop-in, resserrée sur les seules étapes du dossier —,
+glisser-déposer horizontal, et une barre de défilement dupliquée au-dessus du
+tableau. Cette barre n'est pas un ornement : celle du navigateur se trouve sous
+cinquante lignes, donc hors de l'écran au moment précis où l'on en a besoin. La
+fiche complète reste dans **Liste séjours**, qui demeure la vue exhaustive.
+
+> Un défaut du glisser-déposer a été corrigé à cette occasion, **dans les deux
+> onglets** : un glissé relâché hors du tableau ne produit aucun clic, donc rien
+> ne venait consommer le drapeau « on vient de glisser » — et le clic suivant,
+> sur un bouton par exemple, était avalé sans explication. Le drapeau se remet
+> désormais à zéro dès l'appui suivant. Un contrôle de `qa_aquabulle` le vérifie,
+> et il échoue bien si on retire le correctif.
 
 Cet onglet n'ajoute aucun droit : il réutilise les mêmes filtres, le même export
 et la même route d'écriture que la liste générale, avec la contrainte de

@@ -361,7 +361,7 @@
     if (!rows.length) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      td.colSpan = COLONNES.length + 1;
+      td.colSpan = COLONNES.length + 2;
       td.className = 'empty-row';
       td.textContent = 'Aucun dossier ne correspond à ces critères.';
       tr.appendChild(td);
@@ -371,6 +371,21 @@
 
     rows.forEach((r) => {
       const tr = document.createElement('tr');
+
+      // Même repère que dans la liste séjours : un « i » à gauche pour ouvrir le
+      // dossier, et le bouton d'édition à droite. Les deux ouvrent la même
+      // pop-in — on ne demande pas au camping de deviner lequel fait quoi.
+      const tdInfo = document.createElement('td');
+      const info = document.createElement('button');
+      info.type = 'button';
+      info.className = 'btn-info';
+      info.textContent = 'i';
+      info.title = 'Ouvrir le dossier';
+      info.setAttribute('aria-label', 'Ouvrir le dossier');
+      info.addEventListener('click', () => ouvrirModal(r));
+      tdInfo.appendChild(info);
+      tr.appendChild(tdInfo);
+
       COLONNES.forEach((c) => {
         const td = document.createElement('td');
         td.dataset.col = c.col;
@@ -385,7 +400,7 @@
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.className = 'btn-toggle';
-      bouton.textContent = 'Suivre';
+      bouton.textContent = 'Modifier';
       bouton.title = 'Mettre à jour l\'avancement de ce dossier';
       bouton.addEventListener('click', () => ouvrirModal(r));
       tdAction.appendChild(bouton);
@@ -396,7 +411,7 @@
   }
 
   async function loadRows() {
-    tableBody.innerHTML = '<tr><td colspan="' + (COLONNES.length + 1)
+    tableBody.innerHTML = '<tr><td colspan="' + (COLONNES.length + 2)
       + '" class="empty-row">Chargement...</td></tr>';
     try {
       const resp = await fetch('/api/aquabulle?' + buildQuery().toString());
@@ -406,18 +421,20 @@
       totalCount.textContent = String(total);
       renderRows(data.rows || []);
       majPagination();
+      syncScrollbarWidth();
     } catch (err) {
       total = 0;
       totalCount.textContent = '–';
       tableBody.innerHTML = '';
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      td.colSpan = COLONNES.length + 1;
+      td.colSpan = COLONNES.length + 2;
       td.className = 'empty-row';
       td.textContent = 'Erreur : ' + err.message;
       tr.appendChild(td);
       tableBody.appendChild(tr);
       majPagination();
+      syncScrollbarWidth();
     }
   }
 
@@ -426,6 +443,96 @@
     pageInfo.textContent = 'Page ' + page + ' / ' + pages;
     el('prev-page').disabled = page <= 1;
     el('next-page').disabled = page >= pages;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Défilement horizontal
+  //
+  // Vingt-cinq colonnes ne tiennent pas à l'écran. Reprise à l'identique de la
+  // liste séjours : glisser-déposer à la souris, et une barre de défilement
+  // dupliquée au-dessus du tableau — celle du navigateur se trouve sous
+  // cinquante lignes, donc hors de vue au moment où l'on en a besoin.
+  // ---------------------------------------------------------------------------
+
+  function enableDragScroll(container) {
+    if (!container) return;
+    let isDown = false;
+    let hasDragged = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    const SEUIL = 5;   // en deçà, c'est un clic, pas un glissé
+
+    const onDown = (clientX) => {
+      isDown = true; hasDragged = false;
+      startX = clientX; startScrollLeft = container.scrollLeft;
+    };
+    const onMove = (clientX, event) => {
+      if (!isDown) return;
+      const delta = clientX - startX;
+      if (Math.abs(delta) > SEUIL) {
+        hasDragged = true;
+        container.classList.add('dragging');
+        if (event && event.cancelable) event.preventDefault();
+      }
+      container.scrollLeft = startScrollLeft - delta;
+    };
+    const onUp = () => { isDown = false; container.classList.remove('dragging'); };
+
+    container.addEventListener('mousedown', (e) => {
+      // Le drapeau « on vient de glisser » est levé ici, avant même de savoir si
+      // le geste concerne le tableau : un glissé qui s'achève hors du conteneur
+      // ne produit aucun clic, donc rien ne vient le consommer. Sans cette
+      // remise à zéro, le clic suivant — sur un bouton, par exemple — était
+      // avalé comme s'il appartenait au glissé précédent.
+      hasDragged = false;
+      if (e.target.closest('button, a, input, select, textarea')) return;
+      onDown(e.pageX);
+    });
+    window.addEventListener('mousemove', (e) => onMove(e.pageX, e));
+    window.addEventListener('mouseup', onUp);
+
+    // Un glissé ne doit pas se terminer en clic : sans cela, relâcher la souris
+    // sur une ligne ouvrirait le dossier qu'on voulait seulement dépasser.
+    container.addEventListener('click', (e) => {
+      if (hasDragged) { e.preventDefault(); e.stopPropagation(); hasDragged = false; }
+    }, true);
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.target.closest('button, a, input, select, textarea')) return;
+      onDown(e.touches[0].pageX);
+    }, { passive: true });
+    container.addEventListener('touchmove', (e) => onMove(e.touches[0].pageX, e), { passive: true });
+    container.addEventListener('touchend', onUp);
+  }
+
+  const tableWrap = document.querySelector('.table-wrap');
+  const scrollTop = el('scroll-top');
+  const scrollTopInner = el('scroll-top-inner');
+
+  // La barre du haut n'a pas de contenu : on lui donne la largeur du tableau
+  // pour qu'elle ait exactement la même course.
+  function syncScrollbarWidth() {
+    if (!tableWrap || !scrollTop || !scrollTopInner) return;
+    const table = tableWrap.querySelector('table');
+    const largeur = table ? table.scrollWidth : 0;
+    scrollTopInner.style.width = largeur + 'px';
+    scrollTop.hidden = largeur <= tableWrap.clientWidth;   // rien à faire défiler
+  }
+
+  function brancherDefilement() {
+    document.querySelectorAll('.table-wrap').forEach(enableDragScroll);
+    if (!tableWrap || !scrollTop) return;
+    // Verrou pour éviter que les deux conteneurs ne se renvoient l'événement.
+    let syncing = false;
+    scrollTop.addEventListener('scroll', () => {
+      if (syncing) return;
+      syncing = true; tableWrap.scrollLeft = scrollTop.scrollLeft; syncing = false;
+    });
+    tableWrap.addEventListener('scroll', () => {
+      if (syncing) return;
+      syncing = true; scrollTop.scrollLeft = tableWrap.scrollLeft; syncing = false;
+    });
+    window.addEventListener('resize', syncScrollbarWidth);
   }
 
   // ---------------------------------------------------------------------------
@@ -685,6 +792,7 @@
   }
 
   function init() {
+    brancherDefilement();
     brancherChipsStatiques();
     FILTRES.forEach(installerRepli);
     // Un champ de date ou de montant compte comme un filtre actif : le badge
