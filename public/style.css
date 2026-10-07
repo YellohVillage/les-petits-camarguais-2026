@@ -1,0 +1,1204 @@
+:root {
+  --yelloh-red: #E7343A;
+  --yelloh-gold: #F7B924;
+  --petitscamarguais-dark: #16232E;
+  --petitscamarguais-dark-2: #1E3140;
+  --ink: #1B2A3A;
+  --muted: #6B7A87;
+  --bg: #F5F6F7;
+  --card-bg: #FFFFFF;
+  --border: #E2E6E8;
+  --ok: #2E9E5B;
+  --warn: #D98A16;
+  --danger: #C0392B;
+}
+
+/* ---------------------------------------------------------------------------
+   L'attribut HTML `hidden` prime sur toute règle de mise en page.
+   Une classe qui déclare un `display` (flex, inline-block, ...) a une
+   spécificité supérieure à la règle par défaut du navigateur, ce qui rendait
+   des éléments visibles alors qu'ils portaient hidden. Cette règle unique
+   sécurise tous les masquages, présents et à venir.
+   Exception volontaire : .modal-overlay:not([hidden]) qui gère son propre
+   affichage lorsque l'attribut est absent (donc sans conflit).
+   --------------------------------------------------------------------------- */
+[hidden] {
+  display: none !important;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.topbar {
+  background: linear-gradient(135deg, var(--petitscamarguais-dark), var(--petitscamarguais-dark-2));
+  padding: 18px 32px;
+}
+
+.topbar-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Logo du camping : contrairement à celui des Grands Pins, le logo des Petits Camarguais
+   est entièrement blanc. Il se pose donc directement sur le bandeau sombre —
+   surtout pas sur une pastille blanche, où il deviendrait invisible. */
+.logo-camping {
+  height: 56px;
+  width: auto;
+}
+
+.logo-yelloh {
+  height: 46px;
+  width: auto;
+  margin-left: auto;
+  background: white;
+  border-radius: 10px;
+  padding: 3px 8px;
+}
+
+.topbar-divider {
+  flex: 1;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+h1 {
+  font-size: 26px;
+  margin-bottom: 4px;
+  color: var(--ink);
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-top: 0;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: -8px;
+}
+
+.hint code {
+  background: #F0F1F2;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 32px 16px;
+  margin: 16px 0;
+  cursor: pointer;
+  text-align: center;
+  color: var(--muted);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--yelloh-gold);
+  background: #FFFBEF;
+}
+
+.dropzone.has-file {
+  border-color: var(--ok);
+  background: #F1FAF4;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: var(--yelloh-red);
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn-primary:disabled {
+  background: #C9CDD0;
+  cursor: not-allowed;
+}
+
+.btn-primary:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.btn-primary:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.progress-block {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #EEF0F1;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--yelloh-gold), var(--yelloh-red));
+  transition: width 0.2s ease;
+}
+
+.progress-label {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.status-message {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.status-message.info {
+  background: #EEF3F8;
+  color: var(--ink);
+}
+
+.status-message.error {
+  background: #FBEAE8;
+  color: var(--danger);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.stat {
+  background: #F7F8F9;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.stat-label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.stat-ok .stat-value { color: var(--ok); }
+.stat-warn .stat-value { color: var(--warn); }
+.stat-info .stat-value { color: #2E6E9E; }
+
+#errors-block {
+  margin-top: 20px;
+}
+
+#errors-block h3 {
+  font-size: 15px;
+  color: var(--danger);
+}
+
+#errors-list {
+  font-size: 13px;
+  color: var(--muted);
+  padding-left: 18px;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Navigation entre pages                                                    */
+/* ------------------------------------------------------------------------ */
+.subnav {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.subnav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+}
+
+.subnav-link {
+  display: inline-block;
+  padding: 14px 18px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.subnav-link:hover {
+  color: var(--ink);
+}
+
+.subnav-link.active {
+  color: var(--yelloh-red);
+  border-bottom-color: var(--yelloh-red);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Pages dashboard (tableaux larges)                                        */
+/* ------------------------------------------------------------------------ */
+.page-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--yelloh-gold);
+}
+
+.total-count {
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.total-count strong {
+  color: var(--ink);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: var(--yelloh-red) #EEF0F1;
+}
+
+.table-wrap.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.table-wrap::-webkit-scrollbar {
+  height: 11px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+  background: #EEF0F1;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background: var(--yelloh-red);
+  border-radius: 6px;
+  border: 2px solid #EEF0F1;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--petitscamarguais-dark);
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+table.data-table th {
+  text-align: left;
+  background: #F7F8F9;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+/* Entêtes cliquables pour trier le tableau. La flèche reste toujours visible
+   (en gris pâle) afin que la possibilité de trier se remarque au premier
+   coup d'oeil, sans avoir à survoler chaque colonne. */
+table.data-table th.triable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+table.data-table th.triable:hover,
+table.data-table th.triable:focus-visible {
+  background: #EDEFF2;
+  color: var(--text, #1A1A1A);
+}
+
+table.data-table th .tri-fleche {
+  margin-left: 6px;
+  font-size: 0.8em;
+  opacity: 0.35;
+}
+
+table.data-table th.tri-actif {
+  color: var(--text, #1A1A1A);
+  background: #E8EDF3;
+}
+
+table.data-table th.tri-actif .tri-fleche {
+  opacity: 1;
+  color: var(--accent, #0B6FB4);
+}
+
+table.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+table.data-table tbody tr:hover {
+  background: #FAFBFB;
+}
+
+.btn-toggle {
+  background: white;
+  border: 1px solid var(--yelloh-red);
+  color: var(--yelloh-red);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-toggle:hover:not(:disabled) {
+  background: var(--yelloh-red);
+  color: white;
+}
+
+.btn-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-delete {
+  background: white;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.pagination button {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination button:not(:disabled):hover {
+  border-color: var(--yelloh-gold);
+}
+
+#page-info {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.loading-message, .empty-message {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Pop-in d'édition d'un client                                              */
+/* ------------------------------------------------------------------------ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 35, 46, 0.55);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.modal-overlay:not([hidden]) {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 28px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+
+.modal-box h2 {
+  margin-top: 0;
+  font-size: 19px;
+}
+
+.modal-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: -8px;
+  margin-bottom: 20px;
+}
+
+/* Drapeau posé par le camping sur un client à rappeler : il doit sauter aux
+   yeux dans un tableau de 29 colonnes. */
+.action-camping {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fff3cd;
+  color: #8a6100;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Précision discrète accolée à un libellé de champ : indique de quel
+   formulaire provient la question, sans alourdir la lecture. */
+.modal-hint {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-field.full {
+  grid-column: 1 / -1;
+}
+
+.modal-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.modal-field input,
+.modal-field select,
+.modal-field textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.modal-field textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+
+.modal-field input:focus,
+.modal-field select:focus,
+.modal-field textarea:focus {
+  outline: none;
+  border-color: var(--yelloh-gold);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.btn-secondary {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 11px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: var(--muted);
+}
+
+.modal-message {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.modal-message.info {
+  background: #EEF3F8;
+  color: var(--ink);
+}
+
+.modal-message.error {
+  background: #FBEAE8;
+  color: var(--danger);
+}
+
+.modal-message.success {
+  background: #F1FAF4;
+  color: var(--ok);
+}
+
+.modal-field input[readonly] {
+  background: #f2f2f2;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.modal-section {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.btn-export {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.export-message {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.export-message.success { color: #1a7f37; }
+.export-message.error { color: #b42318; }
+
+/* --- Panneau de filtres (vue Liste séjours) --- */
+.filters-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 12px 0 4px;
+  background: #fafafa;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.filter-block-wide { grid-column: span 2; }
+
+.filter-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.filter-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-inline input {
+  flex: 1 1 110px;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.filter-inline span { font-size: 12px; color: var(--muted); }
+
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.filter-chips-empty { font-size: 12px; color: var(--muted); font-style: italic; }
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-chip input { margin: 0; cursor: pointer; }
+.filter-chip:hover { border-color: var(--yelloh-gold); }
+.filter-chip.checked { background: #fff8e5; border-color: var(--yelloh-gold); font-weight: 600; }
+
+.filter-checks { display: flex; flex-direction: column; gap: 6px; }
+.filter-checks label { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+
+.filters-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.filters-count {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--yelloh-gold);
+  color: #3a2c00;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* --- Bouton "i" d'ouverture de la fiche séjour --- */
+.col-info { width: 34px; }
+
+.btn-info {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: white;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-info:hover {
+  border-color: var(--yelloh-gold);
+  background: #fff8e5;
+  color: #3a2c00;
+}
+
+/* --- Barre de défilement horizontale au-dessus du tableau --- */
+.table-scroll-top {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hauteur suffisante pour afficher la barre sur tous les navigateurs. */
+  height: 14px;
+  margin-bottom: 2px;
+  /* La barre reste visible en permanence (utile pour situer la position). */
+  scrollbar-width: thin;
+}
+
+.table-scroll-top > div { height: 1px; }
+
+.table-scroll-top::-webkit-scrollbar { height: 11px; }
+.table-scroll-top::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 6px;
+}
+.table-scroll-top::-webkit-scrollbar-thumb {
+  background: #c4c4c4;
+  border-radius: 6px;
+}
+.table-scroll-top::-webkit-scrollbar-thumb:hover { background: var(--yelloh-gold); }
+
+/* --- Croix de fermeture de la pop-in --- */
+.modal-box { position: relative; }
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: #f2f2f2;
+  border-color: var(--border);
+  color: #b42318;
+}
+
+/* Le titre ne doit pas passer sous la croix. */
+.modal-box h2 { padding-right: 36px; }
+
+/* Modes de paiement : une occurrence (libellé + montant) par ligne. Les lignes
+   concernées peuvent devenir hautes lorsqu'un séjour cumule plusieurs
+   paiements, c'est assumé pour garder le détail lisible. */
+.cell-modes {
+  min-width: 240px;
+  white-space: normal;
+}
+
+.mode-line {
+  display: block;
+  white-space: nowrap;
+}
+
+.mode-line + .mode-line { margin-top: 2px; }
+
+/* --- Organisation du panneau de filtres en sections --- */
+.filter-group { padding: 14px 0; }
+.filter-group + .filter-group { border-top: 1px solid var(--border); }
+.filter-group:first-child { padding-top: 0; }
+
+.filter-group-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.filter-group .filter-block + .filter-block { margin-top: 14px; }
+.filter-group .filters-grid .filter-block + .filter-block { margin-top: 0; }
+
+.filter-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* Zone de saisie du commentaire dans la fiche séjour. */
+.modal-field textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.modal-field textarea:focus {
+  outline: none;
+  border-color: var(--yelloh-gold);
+}
+
+/* --- Barre d'actions en haut de la fiche séjour --- */
+.modal-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- Valeur cliquable de la colonne "Réponse forms" --- */
+.link-forms {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1a5fb4;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-forms:hover { color: #0b3d7a; }
+
+/* Méthode de remboursement. « À vérifier » est le seul cas qui demande une
+   action de contrôle avant traitement : il est mis en évidence pour ne pas être
+   traité machinalement comme les trois autres. */
+.methode {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.85em;
+  white-space: nowrap;
+  background: #EEF1F5;
+  color: #33475B;
+}
+
+.methode-alerte {
+  background: #FDE7E7;
+  color: #A11B1B;
+  font-weight: 600;
+  cursor: help;
+}
+
+/* Aide affichée sous la liste déroulante, dans la fiche séjour. */
+.modal-aide {
+  margin: 6px 0 0;
+  font-size: 0.85em;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.modal-aide-alerte {
+  color: #A11B1B;
+  font-weight: 600;
+}
+
+/* Case de filtre qui ne correspond pas à une valeur présente en base mais à une
+   notion métier, comme « Vide (non traité) ». Le liseré pointillé la distingue
+   des valeurs réelles sans la faire ressortir plus que de raison. */
+.filter-chip-special {
+  border-style: dashed;
+  font-style: italic;
+}
+
+/* Coordonnées bancaires : encadré discret qui apparaît sous la méthode de
+   remboursement quand un virement est à effectuer. Le fond légèrement teinté
+   signale qu'il s'agit d'informations reprises de la réponse du client, en
+   consultation seule. */
+#bloc-coordonnees-bancaires {
+  background: #F7F9FC;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px 14px;
+  margin-top: 4px;
+}
+
+/* Le titre du bloc ne doit pas hériter du trait de séparation des sections
+   principales de la fiche : il est déjà délimité par l'encadré. */
+#bloc-coordonnees-bancaires .modal-section-inline {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* L'IBAN se lit par blocs de 4 caractères : une police à chasse fixe et un
+   léger espacement évitent les erreurs de recopie au moment du virement. */
+#f-banque-iban {
+  font-family: "Courier New", Consolas, monospace;
+  letter-spacing: 0.06em;
+}
+
+/* La modale "Réponse forms" s'ouvre par-dessus la fiche séjour (qui vaut 1000).
+   En pratique le script masque la fiche pendant ce temps : les deux ne sont
+   jamais visibles ensemble. Ce z-index reste une sécurité, pour que la dernière
+   fenêtre ouverte ne puisse jamais se retrouver cachée derrière la précédente. */
+#forms-overlay { z-index: 1100; }
+
+/* Zone tour-opérateur / CSE : conteneur transparent pour la grille, afin de
+   pouvoir masquer toute la zone d'un bloc sans casser la mise en page. */
+.modal-subgrid {
+  display: contents;
+}
+
+
+/* --- Ligne du sous-titre : texte à gauche, export à droite --- */
+.subtitle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.subtitle-row .subtitle { flex: 1 1 320px; margin-top: 0; }
+.subtitle-row .btn-export { flex: 0 0 auto; margin-left: 0; }
+
+/* Une cellule masquée doit l'être quel que soit son display d'origine. */
+
+/* --- Sélecteur ET / OU des modes de paiement --- */
+.filter-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.filter-label-row .filter-label { margin-bottom: 0; }
+
+.filter-operator {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: white;
+}
+
+.op-chip {
+  padding: 3px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.op-chip input { display: none; }
+.op-chip:hover { background: #f7f7f7; }
+.op-chip.checked {
+  background: var(--yelloh-gold);
+  color: #3a2c00;
+}
+
+.filter-hint-block {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* --- Bloc de filtre repliable (liste de catégories) --- */
+/* Contrôle dépliant d'une liste de filtres longue.
+   Dessiné comme un champ de formulaire — bordure, fond, chevron à droite —
+   plutôt que comme un simple libellé surmonté d'une flèche : sans cette
+   affordance, l'utilisateur qui ne sait pas qu'une liste se cache derrière ne
+   pense pas à cliquer. */
+.filter-collapse {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.filter-collapse .filter-label { margin-bottom: 0; cursor: pointer; }
+
+/* Nombre de valeurs disponibles : indique qu'il y a bien quelque chose à
+   ouvrir, et combien, avant même le premier clic. */
+.filter-collapse-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Pousse le chevron à l'extrémité droite du contrôle. */
+.filter-collapse-spacer { flex: 1; }
+
+.filter-collapse-arrow {
+  font-size: 10px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.filter-collapse[aria-expanded="true"] .filter-collapse-arrow {
+  transform: rotate(180deg);
+}
+
+.filter-collapse:hover,
+.filter-collapse:focus-visible {
+  border-color: var(--yelloh-gold);
+  background: #FFFCF4;
+}
+
+.filter-collapse:hover .filter-label,
+.filter-collapse:hover .filter-collapse-arrow { color: var(--ink); }
+
+/* Liste ouverte : rattachée visuellement à son contrôle. */
+.filter-collapse[aria-expanded="true"] {
+  border-color: var(--yelloh-gold);
+  background: #FFFCF4;
+}
+
+/* Une liste repliable très fournie (une quarantaine de campings d'accueil)
+   déborderait du panneau une fois ouverte : on la borne en hauteur et on la
+   rend défilable, plutôt que de repousser les boutons hors de l'écran. */
+#fl-camping:not([hidden]),
+#fl-categorie-pms:not([hidden]) {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Actions répétées en haut du panneau de filtres. */
+.filters-actions-top {
+  margin-top: 0;
+  margin-bottom: 4px;
+  padding-top: 0;
+  padding-bottom: 14px;
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Liste des noms de fichiers attendus sur la page d'import. */
+.hint-list {
+  margin: 6px 0 10px;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.hint-list code {
+  background: #f2f2f2;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+/* Ligne d'actions au-dessus de la barre d'outils des dashboards. */
+.subtitle-spacer { flex: 1 1 auto; margin: 0; }
+
+/* Compteurs d'avancement cliquables de l'onglet Aquabulle. Ce sont des
+   <button> pour rester accessibles au clavier ; la mise en forme reprend celle
+   des .stat de l'écran d'import, avec l'état « filtre appliqué » en plus. */
+.stat-clickable {
+  border: 1px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.stat-clickable:hover {
+  background: #EFF1F3;
+}
+
+.stat-clickable.actif {
+  background: #FFF;
+  border-color: var(--yelloh-gold);
+  box-shadow: 0 0 0 2px rgba(247, 185, 36, 0.3);
+}
+
+/* Ligne « aucun résultat » / « chargement » occupant toute la largeur. */
+.empty-row {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.data-table td.num {
+  text-align: right;
+  white-space: nowrap;
+}

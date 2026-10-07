@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Les Petits Camarguais — Match incorrect</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img src="assets/logo-petits-camarguais.svg" alt="Camping Les Petits Camarguais" class="logo logo-camping" />
+      <div class="topbar-divider"></div>
+      <img src="assets/logo_yelloh.png" alt="Yelloh Village" class="logo logo-yelloh" />
+    </div>
+  </header>
+
+  <nav class="subnav">
+    <div class="subnav-inner">
+      <a href="index.html" class="subnav-link">Import</a>
+      <a href="sejours.html" class="subnav-link">Liste séjours</a>
+      <a href="aquabulle.html" class="subnav-link">Dossiers Aquabulle</a>
+      <a href="repondu.html" class="subnav-link">A répondu</a>
+      <a href="rappeler.html" class="subnav-link active">Match incorrect</a>
+    </div>
+  </nav>
+
+  <main class="page-wide">
+    <h1>Clients à rappeler</h1>
+    <p class="subtitle">Réponses au formulaire dont le rapprochement avec un séjour a échoué : à reprendre à la main. Sans rapport avec l'action « A rappeler » que le camping pose sur un séjour.</p>
+
+    <div class="dashboard-toolbar">
+      <input type="text" id="search-input" class="search-input" placeholder="Rechercher par nom, prénom, email ou numéro de réservation..." />
+      <span class="total-count"><strong id="total-count">–</strong> résultat(s)</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th data-sort="id">Id</th>
+            <th data-sort="nom">Nom</th>
+            <th data-sort="prenom">Prénom</th>
+            <th data-sort="email">Email</th>
+            <th data-sort="num_resa">N° réservation</th>
+            <th data-sort="source">Source</th>
+            <th data-sort="langue">Langue</th>
+            <th data-sort="choix">Choix du client</th>
+            <th data-sort="method_remb">Méthode remb.</th>
+            <th data-sort="iban">IBAN</th>
+            <th data-sort="bic">BIC</th>
+            <th data-sort="info_banque">Banque</th>
+            <th>Action</th>
+            <th>Suppression</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <div id="loading-message" class="loading-message" hidden>Chargement...</div>
+    <div id="empty-message" class="empty-message" hidden></div>
+
+    <div class="pagination">
+      <button id="prev-page">← Précédent</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-page">Suivant →</button>
+    </div>
+  </main>
+
+
+  <div id="modal-overlay" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <h2>Modifier le dossier client</h2>
+      <p class="modal-subtitle">La correction du numéro de réservation ou de l'email relance automatiquement la recherche de correspondance dans master_sejours.</p>
+      <form id="modal-form">
+        <div class="modal-grid">
+          <div class="modal-field">
+            <label for="f-nom">Nom</label>
+            <input type="text" id="f-nom" />
+          </div>
+          <div class="modal-field">
+            <label for="f-prenom">Prénom</label>
+            <input type="text" id="f-prenom" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-email">Email</label>
+            <input type="text" id="f-email" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-num-resa">Numéro de réservation</label>
+            <input type="text" id="f-num-resa" />
+          </div>
+          <div class="modal-field">
+            <label for="f-langue">Langue</label>
+            <input type="text" id="f-langue" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-choix">Choix (formulaire décalage)</label>
+            <textarea id="f-choix"></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="f-method-remb">Méthode de remboursement</label>
+            <textarea id="f-method-remb"></textarea>
+          </div>
+          <div class="modal-field">
+            <label for="f-iban">IBAN</label>
+            <input type="text" id="f-iban" />
+          </div>
+          <div class="modal-field">
+            <label for="f-bic">BIC</label>
+            <input type="text" id="f-bic" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-info-banque">Banque bénéficiaire</label>
+            <input type="text" id="f-info-banque" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-statut">Statut</label>
+            <select id="f-statut">
+              <option value="A répondu">A répondu</option>
+              <option value="Match incorrect">Match incorrect</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="modal-message" class="modal-message" hidden></div>
+
+        <div class="modal-actions">
+          <button type="button" id="modal-cancel" class="btn-secondary">Annuler</button>
+          <button type="submit" id="modal-save" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    window.DASHBOARD_CONFIG = {
+      statut: 'Match incorrect',
+      otherStatut: 'A répondu',
+      toggleLabel: 'Marquer comme répondu',
+      showIdColumn: true,
+      showDeleteButton: true,
+    };
+  </script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

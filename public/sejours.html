@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Les Petits Camarguais — Liste séjours</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img src="assets/logo-petits-camarguais.svg" alt="Camping Les Petits Camarguais" class="logo logo-camping" />
+      <div class="topbar-divider"></div>
+      <img src="assets/logo_yelloh.png" alt="Yelloh Village" class="logo logo-yelloh" />
+    </div>
+  </header>
+
+  <nav class="subnav">
+    <div class="subnav-inner">
+      <a href="index.html" class="subnav-link">Import</a>
+      <a href="sejours.html" class="subnav-link active">Liste séjours</a>
+      <a href="aquabulle.html" class="subnav-link">Dossiers Aquabulle</a>
+      <a href="repondu.html" class="subnav-link">A répondu</a>
+      <a href="rappeler.html" class="subnav-link">Match incorrect</a>
+    </div>
+  </nav>
+
+  <main class="page-wide">
+    <h1>Liste des séjours</h1>
+    <div class="subtitle-row">
+      <p class="subtitle">Toutes les lignes de <code>master_sejours</code> (référentiel des séjours réels). Chaque ligne est modifiable via le bouton « Modifier ».</p>
+      <button type="button" id="export-btn" class="btn-primary btn-export">Exporter la sélection</button>
+    </div>
+
+    <div class="dashboard-toolbar">
+      <input type="text" id="search-input" class="search-input" placeholder="Rechercher par nom, prénom, email ou numéro de réservation..." />
+      <span class="total-count"><strong id="total-count">–</strong> résultat(s)</span>
+      <button type="button" id="filters-toggle" class="btn-secondary">Filtres <span id="filters-count" class="filters-count" hidden>0</span></button>
+      <button type="button" id="columns-toggle" class="btn-secondary">Masquage des colonnes <span id="columns-count" class="filters-count" hidden>0</span></button>
+    </div>
+    <div id="export-message" class="export-message" hidden></div>
+
+    <!-- Sélection des colonnes visibles : préférence propre à chaque
+         utilisateur, conservée dans son navigateur. N'affecte ni la fiche
+         détaillée, ni l'export Excel. -->
+    <section id="columns-panel" class="filters-panel" hidden>
+      <div class="filter-group" style="padding-top:0">
+        <h3 class="filter-group-title">Colonnes affichées dans le tableau</h3>
+        <div id="columns-list" class="filter-chips"></div>
+      </div>
+      <div class="filters-actions">
+        <button type="button" id="columns-all" class="btn-secondary">Tout afficher</button>
+        <button type="button" id="columns-close" class="btn-primary">Fermer</button>
+      </div>
+    </section>
+
+    <section id="filters-panel" class="filters-panel" hidden>
+
+      <!-- Mêmes actions qu'en bas de panneau : évite de faire défiler toute la
+           liste des filtres pour appliquer ou réinitialiser. -->
+      <div class="filters-actions filters-actions-top">
+        <button type="button" id="filters-reset-top" class="btn-secondary">Réinitialiser</button>
+        <button type="button" id="filters-apply-top" class="btn-primary">Appliquer les filtres</button>
+      </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Dates de séjour</h3>
+        <div class="filters-grid">
+          <div class="filter-block">
+            <label class="filter-label">Arrivée entre le</label>
+            <div class="filter-inline">
+              <input type="date" id="fl-arrivee-du" />
+              <span>et le</span>
+              <input type="date" id="fl-arrivee-au" />
+            </div>
+          </div>
+          <div class="filter-block">
+            <label class="filter-label">Départ entre le</label>
+            <div class="filter-inline">
+              <input type="date" id="fl-depart-du" />
+              <span>et le</span>
+              <input type="date" id="fl-depart-au" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Montants</h3>
+        <div class="filters-grid">
+          <div class="filter-block">
+            <label class="filter-label">Montant TTC (€)</label>
+            <div class="filter-inline">
+              <input type="number" step="any" id="fl-ttc-min" placeholder="min" />
+              <span>à</span>
+              <input type="number" step="any" id="fl-ttc-max" placeholder="max" />
+            </div>
+          </div>
+          <div class="filter-block">
+            <label class="filter-label">Montant réglé (€)</label>
+            <div class="filter-inline">
+              <input type="number" step="any" id="fl-regle-min" placeholder="min" />
+              <span>à</span>
+              <input type="number" step="any" id="fl-regle-max" placeholder="max" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Séjour</h3>
+        <div class="filter-block">
+          <label class="filter-label">Nombre de personnes</label>
+          <div id="fl-nb-personnes" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <!-- Liste potentiellement longue (21 catégories ici, davantage sur
+               d'autres campings) : repliée par défaut. -->
+          <button type="button" id="fl-categorie-toggle" class="filter-collapse" aria-expanded="false">
+            <span class="filter-label">Catégorie (PMS)</span>
+            <span id="fl-categorie-count" class="filters-count" hidden>0</span>
+            <span class="filter-collapse-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="fl-categorie-pms" class="filter-chips" hidden></div>
+        </div>
+        <div class="filter-block">
+          <!-- Quartier du camping : déterminant pour cette crise, dont le
+               périmètre est le quartier Aquabulle. Quatre valeurs seulement,
+               donc pas de repli nécessaire. -->
+          <label class="filter-label">Quartier</label>
+          <div id="fl-quartier" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Fidélité</label>
+          <div id="fl-fidelite" class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" value="sans" /> Pas de nuit fid.</label>
+            <label class="filter-chip"><input type="checkbox" value="avec" /> Nuits fid. utilisées</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Paiement</h3>
+        <div class="filter-block">
+          <div class="filter-label-row">
+            <label class="filter-label">Modes de paiement</label>
+            <div class="filter-operator">
+              <label class="op-chip checked"><input type="radio" name="fl-modes-op" value="ou" checked /> OU</label>
+              <label class="op-chip"><input type="radio" name="fl-modes-op" value="et" /> ET</label>
+            </div>
+          </div>
+          <p id="fl-modes-hint" class="filter-hint-block">Plusieurs modes cochés : le séjour est retenu s'il contient <strong>au moins un</strong> des modes sélectionnés.</p>
+          <div id="fl-modes-paiement" class="filter-chips"></div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h3 class="filter-group-title">Suivi de crise</h3>
+        <div class="filter-block">
+          <label class="filter-label">Statut client</label>
+          <div id="fl-statut-client" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <!-- Les deux étapes du dossier d'un client relogé. L'option « pas
+               encore traité » est la plus utile des deux : c'est elle qui sort
+               la liste de ce qu'il reste à faire. -->
+          <label class="filter-label">Suivi relogement</label>
+          <div id="fl-relogement-statut" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Suivi remise</label>
+          <div id="fl-remise-statut" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Action camping</label>
+          <div id="fl-action-camping" class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" value="A rappeler" /> A rappeler</label>
+            <label class="filter-chip filter-chip-special"><input type="checkbox" value="__vide__" /> aucune</label>
+          </div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Situation client</label>
+          <div id="fl-situation-desc" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Statut emplacement</label>
+          <div id="fl-statut-emplacement" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Réponse forms</label>
+          <div id="fl-reponse-forms" class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" value="sans" /> Pas de réponse</label>
+            <label class="filter-chip"><input type="checkbox" value="avec" /> A répondu</label>
+          </div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Formulaire rempli</label>
+          <div id="fl-source-forms" class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" value="relogement" /> Relogement</label>
+          </div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Remboursement / BAV</label>
+          <div id="fl-remboursement" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Méthode remb. / BAV</label>
+          <div id="fl-methode-remboursement" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Décision client</label>
+          <div id="fl-decision-client" class="filter-chips"></div>
+        </div>
+        <div class="filters-grid">
+          <div class="filter-block">
+            <label class="filter-label">Mailings envoyés</label>
+            <div class="filter-checks">
+              <label><input type="checkbox" id="fl-mailing-1" /> Mailing 1 renseigné</label>
+              <label><input type="checkbox" id="fl-mailing-2" /> Mailing 2 renseigné</label>
+              <label><input type="checkbox" id="fl-mailing-3" /> Mailing 3 renseigné</label>
+            </div>
+          </div>
+        </div>
+        <div class="filter-block">
+          <!-- Une quarantaine de campings d'accueil : dépliée, la liste rendait
+               le panneau de filtres interminable. Repliée par défaut, comme les
+               catégories PMS, et sur toute la largeur pour tenir en moins de
+               lignes une fois ouverte. -->
+          <button type="button" id="fl-camping-toggle" class="filter-collapse" aria-expanded="false" aria-controls="fl-camping">
+            <span class="filter-label">Camping de relogement</span>
+            <span id="fl-camping-count" class="filters-count" hidden>0</span>
+            <span class="filter-collapse-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="fl-camping" class="filter-chips filter-chips-empty" hidden>Aucun relogement enregistré</div>
+        </div>
+      </div>
+
+      <div class="filters-actions">
+        <button type="button" id="filters-reset" class="btn-secondary">Réinitialiser</button>
+        <button type="button" id="filters-apply" class="btn-primary">Appliquer les filtres</button>
+      </div>
+    </section>
+
+    <!-- Barre de défilement horizontale dupliquée au-dessus du tableau :
+         son contenu est un simple bloc dont la largeur est recalculée en JS
+         pour correspondre à celle du tableau. -->
+    <div id="scroll-top" class="table-scroll-top" hidden>
+      <div id="scroll-top-inner"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="col-info"></th>
+            <th data-col="numero_client_groupe">N° client</th>
+            <th data-col="nom">Nom</th>
+            <th data-col="email">Email</th>
+            <th data-col="telephone_portable">Portable</th>
+            <th data-col="date_debut_sejour">Arrivée</th>
+            <th data-col="date_depart_sejour">Départ</th>
+            <th data-col="nombre_personnes">Pers.</th>
+            <th data-col="numero_reservation">N° résa</th>
+            <th data-col="numero_emplacement">Emplac.</th>
+            <th data-col="categorie_pms">Catégorie</th>
+            <th data-col="quartier">Quartier</th>
+            <th data-col="relogement_statut">Suivi relogement</th>
+            <th data-col="relogement_hebergement">Hébergement relog.</th>
+            <th data-col="remise_statut">Suivi remise</th>
+            <th data-col="remise_taux">Remise %</th>
+            <th data-col="modes_paiement">Modes de paiement</th>
+            <th data-col="montant_sejour_ttc">Montant TTC</th>
+            <th data-col="montant_regle">Réglé</th>
+            <th data-col="assurance_annulation">Assurance</th>
+            <th data-col="fidelity_use">Fidélité</th>
+            <th data-col="remboursement">Remboursement / BAV</th>
+            <th data-col="methode_remboursement">Méthode remb. / BAV</th>
+            <th data-col="decision_client">Décision client</th>
+            <th data-col="action_camping">Action camping</th>
+            <th data-col="statut_client">Statut client</th>
+            <th data-col="situation_desc">Situation client</th>
+            <th data-col="statut_emplacement">Statut emplacement</th>
+            <th data-col="mailing_1">Mailing 1</th>
+            <th data-col="mailing_2">Mailing 2</th>
+            <th data-col="mailing_3">Mailing 3</th>
+            <th data-col="id_choix_client">Réponse forms</th>
+            <th data-col="date_entree_relogement">Entrée reloge.</th>
+            <th data-col="date_sortie_relogement">Sortie reloge.</th>
+            <th data-col="camping_relogement">Camping reloge.</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <div id="loading-message" class="loading-message" hidden>Chargement...</div>
+    <div id="empty-message" class="empty-message" hidden></div>
+
+    <div class="pagination">
+      <button id="prev-page">← Précédent</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-page">Suivant →</button>
+    </div>
+  </main>
+
+  <div id="modal-overlay" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <button type="button" id="modal-close" class="modal-close" title="Fermer sans enregistrer" aria-label="Fermer sans enregistrer">&times;</button>
+      <h2>Modifier le séjour</h2>
+      <p class="modal-subtitle">Tous les champs sont consultables. Les identifiants internes (id, lien vers choix_client) et les montants issus du PMS (séjour TTC, réglé) sont affichés à titre informatif mais non modifiables.</p>
+
+      <!-- Raccourcis en haut de fiche : évite de descendre jusqu'au bas du
+           formulaire pour enregistrer, et donne accès à la réponse au
+           formulaire lorsqu'il en existe une pour ce séjour. -->
+      <div class="modal-toolbar">
+        <button type="button" id="modal-forms-btn" class="btn-secondary" hidden>Réponse forms</button>
+        <button type="button" id="modal-save-top" class="btn-primary">Enregistrer</button>
+      </div>
+
+      <form id="modal-form" novalidate>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <label for="f-id">Id (interne)</label>
+            <input type="text" id="f-id" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="f-id_choix_client">Id choix client (interne)</label>
+            <input type="text" id="f-id_choix_client" readonly />
+          </div>
+          <div class="modal-field full">
+            <label for="f-nom_entreprise">Camping / entité</label>
+            <input type="text" id="f-nom_entreprise" />
+          </div>
+          <div class="modal-field">
+            <label for="f-numero_client_groupe">N° client groupe</label>
+            <input type="number" id="f-numero_client_groupe" />
+          </div>
+          <div class="modal-field">
+            <label for="f-nombre_personnes">Nombre de personnes</label>
+            <input type="number" id="f-nombre_personnes" />
+          </div>
+          <div class="modal-field">
+            <label for="f-nom">Nom</label>
+            <input type="text" id="f-nom" />
+          </div>
+          <div class="modal-field">
+            <label for="f-prenom">Prénom</label>
+            <input type="text" id="f-prenom" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-email">Email</label>
+            <input type="text" id="f-email" />
+          </div>
+          <div class="modal-field">
+            <label for="f-telephone_fixe">Téléphone fixe</label>
+            <input type="text" id="f-telephone_fixe" />
+          </div>
+          <div class="modal-field">
+            <label for="f-telephone_portable">Téléphone portable</label>
+            <input type="text" id="f-telephone_portable" />
+          </div>
+          <div class="modal-field">
+            <label for="f-date_debut_sejour">Début séjour</label>
+            <input type="date" id="f-date_debut_sejour" />
+          </div>
+          <div class="modal-field">
+            <label for="f-date_depart_sejour">Fin séjour</label>
+            <input type="date" id="f-date_depart_sejour" />
+          </div>
+          <div class="modal-field">
+            <label for="f-categorie_pms">Catégorie PMS</label>
+            <input type="text" id="f-categorie_pms" />
+          </div>
+          <div class="modal-field">
+            <label for="f-quartier">Quartier <span class="modal-hint">(non modifiable)</span></label>
+            <input type="text" id="f-quartier" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="f-numero_emplacement">N° emplacement</label>
+            <input type="text" id="f-numero_emplacement" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-numero_reservation">N° réservation</label>
+            <input type="text" id="f-numero_reservation" />
+          </div>
+
+          <div class="modal-section">Suivi et canaux</div>
+          <div class="modal-field">
+            <label for="f-remboursement">Remboursement / BAV</label>
+            <select id="f-remboursement">
+              <option value="">–</option>
+              <option value="Oui">Oui</option>
+              <option value="Non">Non</option>
+              <option value="Partiel">Partiel</option>
+            </select>
+          </div>
+          <!-- Placée juste à droite du statut de remboursement : le camping voit
+               d'un seul coup d'oeil où en est le dossier et comment le traiter.
+               Calculée à l'import, mais modifiable : c'est le camping qui a le
+               dernier mot, notamment sur les dossiers "À vérifier". -->
+          <div class="modal-field">
+            <label for="f-methode_remboursement">Méthode remb. / BAV</label>
+            <select id="f-methode_remboursement">
+              <option value="">–</option>
+              <option value="Carte">Carte</option>
+              <option value="Virement">Virement</option>
+              <option value="BAV">BAV</option>
+              <option value="À vérifier">À vérifier</option>
+            </select>
+            <p id="methode-aide" class="modal-aide" hidden></p>
+          </div>
+          <!-- Ce que le client a décidé de son séjour. Déduit de sa réponse au
+               formulaire, modifiable si le camping constate autre chose. -->
+          <div class="modal-field">
+            <label for="f-decision_client">Décision client</label>
+            <select id="f-decision_client">
+              <option value="">–</option>
+              <option value="Annulé">Annulé</option>
+              <option value="Décalé">Décalé</option>
+            </select>
+            <p id="decision-aide" class="modal-aide" hidden></p>
+          </div>
+
+          <div class="modal-section" id="field-suivi-relogement" hidden>Suivi du relogement et de la remise</div>
+          <div class="modal-field" id="field-relogement-statut" hidden>
+            <label for="f-relogement_statut">Où en est le relogement</label>
+            <select id="f-relogement_statut">
+              <option value=""></option>
+              <option value="À reloger">À reloger</option>
+              <option value="Relogé">Relogé</option>
+              <option value="Refusé par le client">Refusé par le client</option>
+            </select>
+          </div>
+          <div class="modal-field" id="field-relogement-hebergement" hidden>
+            <label for="f-relogement_hebergement">Hébergement d'accueil</label>
+            <input type="text" id="f-relogement_hebergement" placeholder="ex. P12 — Village du Port" />
+          </div>
+          <div class="modal-field" id="field-remise-statut" hidden>
+            <label for="f-remise_statut">Où en est la remise</label>
+            <select id="f-remise_statut">
+              <option value=""></option>
+              <option value="À appliquer">À appliquer</option>
+              <option value="Appliquée">Appliquée</option>
+            </select>
+          </div>
+          <div class="modal-field" id="field-remise-taux" hidden>
+            <label for="f-remise_taux">Taux de remise (%) <span class="modal-hint">20 par défaut, modifiable</span></label>
+            <input type="number" step="any" min="0" max="100" id="f-remise_taux" />
+          </div>
+          <!-- Coordonnées bancaires du client, affichées uniquement pour un
+               remboursement par virement : tout ce qu'il faut pour payer sur le
+               même écran, sans aller ouvrir la réponse au formulaire.
+               En lecture seule : elles appartiennent à la réponse du client et
+               se corrigent depuis la modale « Réponse forms », pas ici. -->
+          <div class="modal-field full" id="bloc-coordonnees-bancaires" hidden>
+            <div class="modal-section modal-section-inline">Coordonnées bancaires du client</div>
+            <p id="banque-message" class="modal-aide" hidden></p>
+            <div class="modal-grid modal-subgrid" id="banque-champs">
+              <div class="modal-field full">
+                <label for="f-banque-iban">IBAN</label>
+                <input type="text" id="f-banque-iban" readonly />
+              </div>
+              <div class="modal-field">
+                <label for="f-banque-bic">BIC / SWIFT</label>
+                <input type="text" id="f-banque-bic" readonly />
+              </div>
+              <div class="modal-field">
+                <label for="f-banque-etablissement">Nom et adresse de la banque</label>
+                <input type="text" id="f-banque-etablissement" readonly />
+              </div>
+            </div>
+          </div>
+          <!-- Affiché uniquement lorsque le remboursement est "Partiel" :
+               permet de consigner le détail / la justification. -->
+          <div class="modal-field full" id="field-commentaire_remboursement" hidden>
+            <label for="f-commentaire_remboursement">Commentaire remboursement <span class="modal-hint">(remboursement partiel)</span></label>
+            <textarea id="f-commentaire_remboursement" rows="3" placeholder="Mémo sur ce dossier : montant retenu, motif, échanges avec le client..."></textarea>
+          </div>
+
+
+          <!-- Suivi propre au camping, sans rapport avec le traitement du
+               dossier de remboursement : un client à ne pas oublier de rappeler. -->
+          <div class="modal-section">Suivi camping</div>
+          <div class="modal-field">
+            <label for="f-action_camping">Action camping</label>
+            <select id="f-action_camping">
+              <option value="">–</option>
+              <option value="A rappeler">A rappeler</option>
+            </select>
+          </div>
+          <div class="modal-field full" id="field-commentaire_camping" hidden>
+            <label for="f-commentaire_camping">Motif du rappel</label>
+            <textarea id="f-commentaire_camping" rows="3" placeholder="Pourquoi ce client doit être rappelé : demande particulière, litige, promesse faite..."></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="f-modes_paiement">Modes de paiement</label>
+            <input type="text" id="f-modes_paiement" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-transactions_lyra">Transactions Lyra</label>
+            <input type="text" id="f-transactions_lyra" />
+          </div>
+          <div class="modal-field">
+            <label for="f-canal_saisie">Canal de saisie</label>
+            <input type="text" id="f-canal_saisie" />
+          </div>
+          <div class="modal-field">
+            <label for="f-canal_reservation_online">Canal réservation en ligne</label>
+            <input type="text" id="f-canal_reservation_online" />
+          </div>
+          <div class="modal-field">
+            <label for="f-sales_channel_brut">Sales channel brut</label>
+            <input type="number" id="f-sales_channel_brut" />
+          </div>
+          <div class="modal-field">
+            <label for="f-type_origine_code">Type origine (code)</label>
+            <input type="number" id="f-type_origine_code" />
+          </div>
+
+          <div id="section-to-ce" class="modal-subgrid" hidden>
+          <div class="modal-section">Tour-opérateur / CSE</div>
+          <div class="modal-field">
+            <label for="f-type_to_ce">Type TO / CSE</label>
+            <input type="text" id="f-type_to_ce" />
+          </div>
+          <div class="modal-field">
+            <label for="f-nom_to">Nom TO / CSE</label>
+            <input type="text" id="f-nom_to" />
+          </div>
+          <div class="modal-field">
+            <label for="f-prenom_to">Prénom contact TO</label>
+            <input type="text" id="f-prenom_to" />
+          </div>
+          <div class="modal-field">
+            <label for="f-email_to">Email TO / CSE</label>
+            <input type="text" id="f-email_to" />
+          </div>
+          <div class="modal-field">
+            <label for="f-telephone_fixe_to">Tél. fixe TO</label>
+            <input type="text" id="f-telephone_fixe_to" />
+          </div>
+          <div class="modal-field">
+            <label for="f-telephone_portable_to">Tél. portable TO</label>
+            <input type="text" id="f-telephone_portable_to" />
+          </div>
+          </div>
+
+          <div class="modal-section">Montants et fidélité</div>
+          <div class="modal-field">
+            <label for="f-montant_sejour_ttc">Montant séjour TTC (non modifiable)</label>
+            <input type="text" id="f-montant_sejour_ttc" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="f-montant_regle">Montant réglé (non modifiable)</label>
+            <input type="text" id="f-montant_regle" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="f-assurance_annulation">Assurance annulation</label>
+            <input type="number" step="any" id="f-assurance_annulation" />
+          </div>
+          <div class="modal-field">
+            <label for="f-fidelity_use">Nuits fidélité utilisées</label>
+            <input type="number" id="f-fidelity_use" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-fidelity_map">Cartographie fidélité</label>
+            <input type="text" id="f-fidelity_map" />
+          </div>
+
+          <div class="modal-section">Suivi de crise</div>
+          <div class="modal-field full">
+            <label for="f-statut_client">Statut client</label>
+            <input type="text" id="f-statut_client" />
+          </div>
+          <div class="modal-field">
+            <label for="f-situation">Situation (code)</label>
+            <input type="number" id="f-situation" />
+          </div>
+          <div class="modal-field">
+            <label for="f-situation_desc">Situation client</label>
+            <input type="text" id="f-situation_desc" />
+          </div>
+          <div class="modal-field">
+            <label for="f-statut_emplacement">Statut emplacement <span class="modal-hint">(non modifiable)</span></label>
+            <input type="text" id="f-statut_emplacement" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="f-nom_prenom">Nom et prénom (source)</label>
+            <input type="text" id="f-nom_prenom" />
+          </div>
+          <div class="modal-field">
+            <label for="f-mailing_1">Mailing 1</label>
+            <input type="text" id="f-mailing_1" />
+          </div>
+          <div class="modal-field">
+            <label for="f-date_envoi_m1">Date envoi M1</label>
+            <input type="date" id="f-date_envoi_m1" />
+          </div>
+          <div class="modal-field">
+            <label for="f-mailing_2">Mailing 2</label>
+            <input type="text" id="f-mailing_2" />
+          </div>
+          <div class="modal-field">
+            <label for="f-date_envoi_m2">Date envoi M2</label>
+            <input type="date" id="f-date_envoi_m2" />
+          </div>
+          <div class="modal-field">
+            <label for="f-mailing_3">Mailing 3</label>
+            <input type="text" id="f-mailing_3" />
+          </div>
+          <div class="modal-field">
+            <label for="f-date_envoi_m3">Date envoi M3</label>
+            <input type="date" id="f-date_envoi_m3" />
+          </div>
+
+          <div class="modal-section">Nuits et calcul de remboursement</div>
+          <div class="modal-field">
+            <label for="f-los">Nombre de nuits (LOS)</label>
+            <input type="number" id="f-los" />
+          </div>
+          <div class="modal-field">
+            <label for="f-montant_ht_nuit">Montant HT / nuit (non modifiable)</label>
+            <input type="text" id="f-montant_ht_nuit" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="f-nuits_non_consommees">Nuits non consommées</label>
+            <input type="number" id="f-nuits_non_consommees" />
+          </div>
+          <div class="modal-field">
+            <label for="f-calcul_rbs_nuits_non_consommees">Calcul rbs nuits non consommées (non modifiable)</label>
+            <input type="text" id="f-calcul_rbs_nuits_non_consommees" readonly />
+          </div>
+
+          <div class="modal-section">Relogement</div>
+          <div class="modal-field">
+            <label for="f-date_entree_relogement">Date d'entrée</label>
+            <input type="date" id="f-date_entree_relogement" />
+          </div>
+          <div class="modal-field">
+            <label for="f-date_sortie_relogement">Date de sortie</label>
+            <input type="date" id="f-date_sortie_relogement" />
+          </div>
+          <div class="modal-field full">
+            <label for="f-camping_relogement">Camping de relogement</label>
+            <input type="text" id="f-camping_relogement" />
+          </div>
+          <div class="modal-field full" id="field-relogements_detail" hidden>
+            <label for="f-relogements_detail">Détail des relogements <span class="modal-hint">(non modifiable)</span></label>
+            <textarea id="f-relogements_detail" rows="3" readonly></textarea>
+          </div>
+
+        </div>
+
+        <div id="modal-message" class="modal-message" hidden></div>
+
+        <div class="modal-actions">
+          <button type="button" id="modal-cancel" class="btn-secondary">Annuler</button>
+          <button type="submit" id="modal-save" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modale secondaire : réponse du client au formulaire (table choix_client).
+       Même logique que la fiche séjour : seule la validation enregistre, la
+       croix / le clic à côté / Échap ferment sans rien écrire. -->
+  <div id="forms-overlay" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <button type="button" id="forms-close" class="modal-close" title="Fermer sans enregistrer" aria-label="Fermer sans enregistrer">&times;</button>
+      <h2>Réponse au formulaire</h2>
+      <p class="modal-subtitle" id="forms-subtitle">Réponse transmise par le client. La correction du numéro de réservation ou de l'email relance automatiquement la recherche de correspondance avec les séjours.</p>
+
+      <form id="forms-form">
+        <div class="modal-grid">
+          <div class="modal-field">
+            <label for="fm-id">Id réponse (interne)</label>
+            <input type="text" id="fm-id" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="fm-source">Source</label>
+            <input type="text" id="fm-source" readonly />
+          </div>
+          <div class="modal-field">
+            <label for="fm-nom">Nom</label>
+            <input type="text" id="fm-nom" />
+          </div>
+          <div class="modal-field">
+            <label for="fm-prenom">Prénom</label>
+            <input type="text" id="fm-prenom" />
+          </div>
+          <div class="modal-field full">
+            <label for="fm-email">Email</label>
+            <input type="text" id="fm-email" />
+          </div>
+          <div class="modal-field full">
+            <label for="fm-num_resa">Numéro de réservation</label>
+            <input type="text" id="fm-num_resa" />
+          </div>
+          <div class="modal-field full">
+            <label for="fm-choix">Que souhaitez-vous faire ? <span class="modal-hint">(formulaire 1)</span></label>
+            <textarea id="fm-choix" rows="2"></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="fm-situation">Quelle est votre situation ? <span class="modal-hint">(formulaire 2)</span></label>
+            <textarea id="fm-situation" rows="2"></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="fm-je_choisis">Je choisis <span class="modal-hint">(formulaire 2)</span></label>
+            <textarea id="fm-je_choisis" rows="2"></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="fm-je_decide">Je décide <span class="modal-hint">(formulaire 2)</span></label>
+            <textarea id="fm-je_decide" rows="2"></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="fm-nous_proposons">Nous vous proposons de <span class="modal-hint">(formulaire 3)</span></label>
+            <textarea id="fm-nous_proposons" rows="3"></textarea>
+          </div>
+          <div class="modal-field full">
+            <label for="fm-method_remb">Méthode de remboursement</label>
+            <textarea id="fm-method_remb" rows="2"></textarea>
+          </div>
+          <div class="modal-field">
+            <label for="fm-iban">IBAN</label>
+            <input type="text" id="fm-iban" />
+          </div>
+          <div class="modal-field">
+            <label for="fm-bic">BIC</label>
+            <input type="text" id="fm-bic" />
+          </div>
+          <div class="modal-field full">
+            <label for="fm-info_banque">Banque bénéficiaire</label>
+            <input type="text" id="fm-info_banque" />
+          </div>
+          <div class="modal-field full">
+            <label for="fm-statut">Statut</label>
+            <select id="fm-statut">
+              <option value="A répondu">A répondu</option>
+              <option value="Match incorrect">Match incorrect</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="forms-message" class="modal-message" hidden></div>
+
+        <div class="modal-actions">
+          <button type="button" id="forms-cancel" class="btn-secondary">Annuler</button>
+          <button type="submit" id="forms-save" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="sejours.js"></script>
+</body>
+</html>

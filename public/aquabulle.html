@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Les Petits Camarguais — Dossiers Aquabulle</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img src="assets/logo-petits-camarguais.svg" alt="Camping Les Petits Camarguais" class="logo logo-camping" />
+      <div class="topbar-divider"></div>
+      <img src="assets/logo_yelloh.png" alt="Yelloh Village" class="logo logo-yelloh" />
+    </div>
+  </header>
+
+  <nav class="subnav">
+    <div class="subnav-inner">
+      <a href="index.html" class="subnav-link">Import</a>
+      <a href="sejours.html" class="subnav-link">Liste séjours</a>
+      <a href="aquabulle.html" class="subnav-link active">Dossiers Aquabulle</a>
+      <a href="repondu.html" class="subnav-link">A répondu</a>
+      <a href="rappeler.html" class="subnav-link">Match incorrect</a>
+    </div>
+  </nav>
+
+  <main class="page-wide">
+    <h1>Dossiers Aquabulle</h1>
+    <div class="subtitle-row">
+      <p class="subtitle">Les clients du quartier Aquabulle en arrivée à partir du 08/10, seuls concernés par le formulaire. Les autres quartiers reçoivent une remise appliquée d'office par le camping et ne figurent pas ici — ils restent consultables dans <a href="sejours.html">Liste séjours</a>.</p>
+      <button type="button" id="export-btn" class="btn-primary btn-export">Exporter la sélection</button>
+    </div>
+
+    <!-- Avancement global : ce qui reste à faire, en un coup d'œil. Chaque
+         compteur est cliquable et applique le filtre correspondant. -->
+    <section id="avancement" class="stats-grid" aria-label="Avancement des dossiers"></section>
+
+    <div class="dashboard-toolbar">
+      <input type="text" id="search-input" class="search-input" placeholder="Rechercher par nom, prénom, email ou numéro de réservation..." />
+      <span class="total-count"><strong id="total-count">–</strong> dossier(s)</span>
+      <button type="button" id="filters-toggle" class="btn-secondary">Filtres <span id="filters-count" class="filters-count" hidden>0</span></button>
+    </div>
+    <div id="export-message" class="export-message" hidden></div>
+
+    <section id="filters-panel" class="filters-panel" hidden>
+      <div class="filter-group" style="padding-top:0">
+        <h3 class="filter-group-title">Où en est le dossier</h3>
+        <div class="filter-block">
+          <label class="filter-label">Réponse au formulaire</label>
+          <div id="fl-reponse-forms" class="filter-chips">
+            <label class="filter-chip"><input type="checkbox" value="sans" /> Pas de réponse</label>
+            <label class="filter-chip"><input type="checkbox" value="avec" /> A répondu</label>
+          </div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Décision du client</label>
+          <div id="fl-decision-client" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Méthode de remboursement</label>
+          <div id="fl-methode-remboursement" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Remboursement effectué</label>
+          <div id="fl-remboursement" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Suivi du relogement</label>
+          <div id="fl-relogement-statut" class="filter-chips"></div>
+        </div>
+        <div class="filter-block">
+          <label class="filter-label">Suivi de la remise</label>
+          <div id="fl-remise-statut" class="filter-chips"></div>
+        </div>
+      </div>
+      <div class="filters-actions">
+        <button type="button" id="filters-reset" class="btn-secondary">Réinitialiser</button>
+        <button type="button" id="filters-apply" class="btn-primary">Appliquer les filtres</button>
+      </div>
+    </section>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>N° résa</th>
+            <th>Emplac.</th>
+            <th>Arrivée</th>
+            <th>Départ</th>
+            <th>Réglé</th>
+            <th>Réponse</th>
+            <th>Décision</th>
+            <th>Méthode remb.</th>
+            <th>Remb. fait</th>
+            <th>Relogement</th>
+            <th>Hébergement</th>
+            <th>Remise</th>
+            <th>Taux</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button id="prev-page">← Précédent</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-page">Suivant →</button>
+    </div>
+  </main>
+
+  <!-- Pop-in resserrée sur les seules étapes du dossier. La fiche complète du
+       séjour reste accessible depuis l'onglet Liste séjours : ici on ne montre
+       que ce que la réception a besoin de saisir. -->
+  <div id="modal-overlay" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <button type="button" id="modal-close" class="modal-close" title="Fermer sans enregistrer" aria-label="Fermer sans enregistrer">&times;</button>
+      <h2 id="modal-titre">Dossier</h2>
+      <p class="modal-subtitle" id="modal-sous-titre"></p>
+
+      <form id="modal-form">
+        <div class="modal-grid">
+          <div class="modal-field full">
+            <label for="f-decision_client">Décision du client <span class="modal-hint">(issue du formulaire)</span></label>
+            <select id="f-decision_client">
+              <option value=""></option>
+              <option value="Annulé">Annulé</option>
+              <option value="Relogement + remise">Relogement + remise</option>
+            </select>
+          </div>
+
+          <div class="modal-section" id="bloc-annulation" hidden>Annulation</div>
+          <div class="modal-field" id="champ-methode" hidden>
+            <label for="f-methode_remboursement">Méthode de remboursement</label>
+            <select id="f-methode_remboursement">
+              <option value=""></option>
+              <option value="Carte">Carte</option>
+              <option value="Virement">Virement</option>
+              <option value="BAV">BAV</option>
+              <option value="À vérifier">À vérifier</option>
+            </select>
+          </div>
+          <div class="modal-field" id="champ-remboursement" hidden>
+            <label for="f-remboursement">Remboursement effectué</label>
+            <select id="f-remboursement">
+              <option value=""></option>
+              <option value="Oui">Oui</option>
+              <option value="Non">Non</option>
+              <option value="Partiel">Partiel</option>
+            </select>
+          </div>
+          <div class="modal-field full" id="champ-banque" hidden>
+            <label>Coordonnées bancaires <span class="modal-hint">(non modifiables ici)</span></label>
+            <textarea id="f-banque" rows="3" readonly></textarea>
+          </div>
+
+          <div class="modal-section" id="bloc-relogement" hidden>Relogement et remise</div>
+          <div class="modal-field" id="champ-relogement-statut" hidden>
+            <label for="f-relogement_statut">Où en est le relogement</label>
+            <select id="f-relogement_statut">
+              <option value=""></option>
+              <option value="À reloger">À reloger</option>
+              <option value="Relogé">Relogé</option>
+              <option value="Refusé par le client">Refusé par le client</option>
+            </select>
+          </div>
+          <div class="modal-field" id="champ-relogement-hebergement" hidden>
+            <label for="f-relogement_hebergement">Hébergement d'accueil</label>
+            <input type="text" id="f-relogement_hebergement" placeholder="ex. P12 — Village du Port" />
+          </div>
+          <div class="modal-field" id="champ-remise-statut" hidden>
+            <label for="f-remise_statut">Où en est la remise</label>
+            <select id="f-remise_statut">
+              <option value=""></option>
+              <option value="À appliquer">À appliquer</option>
+              <option value="Appliquée">Appliquée</option>
+            </select>
+          </div>
+          <div class="modal-field" id="champ-remise-taux" hidden>
+            <label for="f-remise_taux">Taux de remise (%) <span class="modal-hint">20 par défaut</span></label>
+            <input type="number" step="any" min="0" max="100" id="f-remise_taux" />
+          </div>
+
+          <div class="modal-field full">
+            <label for="f-commentaire_camping">Commentaire</label>
+            <textarea id="f-commentaire_camping" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div id="modal-message" class="modal-message" hidden></div>
+        <div class="modal-actions">
+          <button type="button" id="modal-cancel" class="btn-secondary">Annuler</button>
+          <button type="submit" id="modal-save" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="aquabulle.js"></script>
+</body>
+</html>

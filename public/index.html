@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Les Petits Camarguais — Gestion des dossiers clients</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img src="assets/logo-petits-camarguais.svg" alt="Camping Les Petits Camarguais" class="logo logo-camping" />
+      <div class="topbar-divider"></div>
+      <img src="assets/logo_yelloh.png" alt="Yelloh Village" class="logo logo-yelloh" />
+    </div>
+  </header>
+
+  <nav class="subnav">
+    <div class="subnav-inner">
+      <a href="index.html" class="subnav-link active">Import</a>
+      <a href="sejours.html" class="subnav-link">Liste séjours</a>
+      <a href="aquabulle.html" class="subnav-link">Dossiers Aquabulle</a>
+      <a href="repondu.html" class="subnav-link">A répondu</a>
+      <a href="rappeler.html" class="subnav-link">Match incorrect</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <h1>Gestion des dossiers clients</h1>
+    <p class="subtitle">Import des réponses formulaires (solidarité / décalage) dans la base de données.</p>
+
+    <section class="card">
+      <h2>Importer un fichier</h2>
+      <p class="hint">Un seul formulaire est utilisé pour cette crise. Le fichier doit s'appeler exactement :</p>
+      <ul class="hint-list">
+        <li><strong>Formulaire relogement</strong> &rarr; <code>relogement.xlsx</code></li>
+      </ul>
+      <p class="hint">Tout autre nom est refusé et aucune donnée n'est importée. La casse n'a pas d'importance (<code>Relogement.xlsx</code> convient), et les fichiers <code>.xls</code> sont également acceptés. Le fichier sorti de Forms porte un nom qui change à chaque export : il faut donc le renommer avant de le déposer.</p>
+      <p class="hint">Un même fichier peut être réimporté sans risque : seules les réponses qui ne sont pas déjà en base sont reprises.</p>
+
+      <form id="import-form">
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="file-input" name="file" accept=".xls,.xlsx" hidden />
+          <span id="dropzone-text">Cliquez ici ou déposez <code>relogement.xlsx</code></span>
+        </label>
+
+        <button type="submit" id="submit-btn" class="btn-primary" disabled>Importer le fichier</button>
+      </form>
+
+      <div id="progress-block" class="progress-block" hidden>
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <span id="progress-label" class="progress-label">0%</span>
+      </div>
+
+      <div id="status-message" class="status-message" hidden></div>
+    </section>
+
+    <section id="results" class="card" hidden>
+      <h2>Résultat de l'import</h2>
+      <div class="stats-grid">
+        <div class="stat"><span class="stat-value" id="stat-total">–</span><span class="stat-label">Lignes dans le fichier</span></div>
+        <div class="stat"><span class="stat-value" id="stat-delta">–</span><span class="stat-label">Delta importé</span></div>
+        <div class="stat stat-ok"><span class="stat-value" id="stat-repondu">–</span><span class="stat-label">A répondu</span></div>
+        <div class="stat stat-warn"><span class="stat-value" id="stat-rappeler">–</span><span class="stat-label">Match incorrect</span></div>
+        <div class="stat stat-info"><span class="stat-value" id="stat-corrections">–</span><span class="stat-label">Retrouvés par email</span></div>
+      </div>
+      <div id="errors-block" hidden>
+        <h3>Erreurs rencontrées</h3>
+        <ul id="errors-list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
