@@ -502,7 +502,28 @@ Cet onglet n'ajoute aucun droit : il réutilise les mêmes filtres, le même exp
 et la même route d'écriture que la liste générale, avec la contrainte de
 périmètre en plus. Il ne retire rien non plus — tout y est consultable ailleurs.
 
-**A répondu** — les réponses rattachées à un séjour, vue du call center.
+**A répondu** — les réponses du call center, avec un filtre **Rattachement au
+séjour** qui mérite une explication.
+
+Un client qui répond deux fois produit deux réponses. Un séjour ne peut en
+porter qu'une, la plus récente : la précédente est dite **supplantée**. Elle
+reste en base et consultable — on veut pouvoir la retrouver — mais elle ne
+décrit plus aucun dossier. La laisser dans les résultats fausse le suivi :
+filtrer sur « Je souhaite annuler » renvoyait 2 réponses pour 1 seul séjour
+réellement annulé.
+
+La case **« Rattachée à un séjour » est donc cochée à l'ouverture**, et le badge
+de filtres l'annonce. Le call center obtient un décompte juste sans rien faire,
+voit qu'un filtre est actif, et peut le retirer. « Réinitialiser » la remet :
+l'état de référence de cet écran est le suivi juste, pas l'absence de filtre.
+
+Cocher **« Supplantée (doublon) »** isole les réponses écartées. Quand elles
+s'affichent, leur ligne est grisée et le nom porte un repère « doublon » qui
+explique au survol pourquoi. L'API renvoie pour cela un champ `rattachee` sur
+chaque réponse.
+
+L'écran **Match incorrect** n'est pas concerné : aucune de ses réponses n'est
+rattachée, par définition.
 
 **Match incorrect** — les réponses qui n'ont trouvé aucun séjour. A vocation à
 rester vide.

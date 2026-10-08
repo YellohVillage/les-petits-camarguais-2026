@@ -62,6 +62,19 @@
       <div class="filter-group">
         <h3 class="filter-group-title">Réponses du client</h3>
         <div class="filter-block">
+          <!-- Un client qui répond deux fois produit deux réponses. Le séjour
+               ne peut en porter qu'une, la plus récente : la précédente est
+               « supplantée ». Elle reste consultable, mais elle ne décrit plus
+               aucun dossier — la laisser dans un suivi fausserait les comptes.
+               D'où cette case cochée d'emblée : le filtre est visible et
+               retirable, mais le décompte est juste sans rien faire. -->
+          <label class="filter-label">Rattachement au séjour</label>
+          <div id="fl-rattachement" class="filter-chips">
+            <label class="filter-chip checked"><input type="checkbox" value="rattachee" checked /> Rattachée à un séjour</label>
+            <label class="filter-chip filter-chip-special"><input type="checkbox" value="supplantee" /> Supplantée (doublon)</label>
+          </div>
+        </div>
+        <div class="filter-block">
           <button type="button" id="fl-choix-toggle" class="filter-collapse" aria-expanded="false">
             <span class="filter-collapse-arrow">▸</span>
             <span class="filter-label">Choix du client</span>

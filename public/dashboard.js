@@ -149,6 +149,9 @@
     situation: document.getElementById('fl-situation'),
     jeDecide: document.getElementById('fl-je-decide'),
     methodRemb: document.getElementById('fl-method-remb'),
+    // Absent de l'écran « Match incorrect » : par définition, aucune de ces
+    // réponses n'est rattachée à un séjour.
+    rattachement: document.getElementById('fl-rattachement'),
   } : {};
 
   function checkedValues(container) {
@@ -230,12 +233,13 @@
     joinIf('situation', checkedValues(fl.situation));
     joinIf('je_decide', checkedValues(fl.jeDecide));
     joinIf('method_remb', checkedValues(fl.methodRemb));
+    joinIf('rattachement', checkedValues(fl.rattachement));
     return p;
   }
 
   function activeFilterCount() {
     if (!aDesFiltres) return 0;
-    return ['source', 'langue', 'choix', 'situation', 'jeDecide', 'methodRemb']
+    return ['source', 'langue', 'choix', 'situation', 'jeDecide', 'methodRemb', 'rattachement']
       .reduce((n, k) => n + checkedValues(fl[k]).length, 0);
   }
 
@@ -317,6 +321,17 @@
   }
 
   if (aDesFiltres) {
+    // Les chips du rattachement sont écrites dans le HTML, pas rendues depuis
+    // les données : elles n'héritent donc pas de l'écouteur de renderChips.
+    if (fl.rattachement) {
+      fl.rattachement.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          input.closest('.filter-chip').classList.toggle('checked', input.checked);
+          refreshFilterBadge();
+        });
+      });
+    }
+
     refreshChoixCount = setupCollapse('fl-choix-toggle', fl.choix, 'fl-choix-count');
     refreshSituationCount = setupCollapse('fl-situation-toggle', fl.situation, 'fl-situation-count');
     refreshJeDecideCount = setupCollapse('fl-je-decide-toggle', fl.jeDecide, 'fl-je-decide-count');
@@ -338,6 +353,15 @@
           i.closest('.filter-chip').classList.remove('checked');
         });
       });
+      // Réinitialiser remet l'écran dans son état d'ouverture, pas dans un état
+      // sans aucun filtre : sans cela, le suivi repartirait avec les doublons
+      // dedans et les compteurs seraient de nouveau faux.
+      const parDefaut = fl.rattachement
+        && fl.rattachement.querySelector('input[value="rattachee"]');
+      if (parDefaut) {
+        parDefaut.checked = true;
+        parDefaut.closest('.filter-chip').classList.add('checked');
+      }
       [refreshChoixCount, refreshSituationCount, refreshJeDecideCount, refreshMethodCount]
         .forEach((f) => f && f());
       currentPage = 1;
@@ -462,9 +486,19 @@
       for (const row of data.rows) {
         rowsById[row.id] = row;
         const tr = document.createElement('tr');
+        // Réponse supplantée : le client a répondu à nouveau, et c'est la
+        // réponse suivante qui porte le dossier. On le dit sur la ligne plutôt
+        // que de laisser croire à un dossier de plus.
+        const supplantee = row.rattachee === false;
+        if (supplantee) tr.classList.add('ligne-supplantee');
+        const marque = supplantee
+          ? ' <span class="badge-supplantee" title="Le client a répondu à nouveau : '
+            + 'c\'est sa réponse la plus récente qui porte le dossier. Celle-ci '
+            + 'est conservée pour mémoire.">doublon</span>'
+          : '';
         tr.innerHTML =
           (config.showIdColumn ? '<td>' + escapeHtml(row.id) + '</td>' : '') +
-          '<td>' + escapeHtml(row.nom) + '</td>' +
+          '<td>' + escapeHtml(row.nom) + marque + '</td>' +
           '<td>' + escapeHtml(row.prenom) + '</td>' +
           '<td>' + escapeHtml(row.email) + '</td>' +
           '<td>' + escapeHtml(row.num_resa) + '</td>' +
@@ -631,6 +665,10 @@
   });
 
   activerTriEntetes();
+  // Le badge doit refléter l'état d'ouverture, pas seulement les changements :
+  // un filtre coché d'emblée doit s'annoncer, sinon l'utilisateur voit un
+  // décompte réduit sans savoir pourquoi.
+  refreshFilterBadge();
   loadFilterOptions();
   loadPage();
 })();

@@ -1209,3 +1209,20 @@ table.data-table tbody tr:hover {
   text-align: right;
   white-space: nowrap;
 }
+
+/* Réponse supplantée par une plus récente : visible quand on la demande, mais
+   jamais confondue avec un dossier en cours. */
+.ligne-supplantee { background: #FBFBFC; color: var(--muted); }
+
+.badge-supplantee {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #EEF0F1;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+  cursor: help;
+}

@@ -688,10 +688,67 @@ function parseClientsFilters(query) {
     langue: parseList(query.langue),
     situation: parseList(query.situation),
     choix: parseList(query.choix),                   // fusion choix + je_choisis
+    // « rattachee » / « supplantee » : voir resoudreRattachement.
+    rattachement: parseList(query.rattachement),
     jeDecide: parseList(query.je_decide),
     methodRemb: parseList(query.method_remb),
     tri: parseTri(query, CLIENTS_TRI_AUTORISE, CLIENTS_TRI_DEFAUT),
   };
+}
+
+// Une réponse est « rattachée » lorsqu'un séjour pointe vers elle. Les autres
+// sont des réponses supplantées : le client a répondu deux fois, et seule la
+// plus récente porte le dossier. Elles restent en base et consultables, mais
+// elles ne décrivent plus aucun séjour — les compter dans un suivi fausserait
+// la vision du call center.
+//
+// Le lien se lit dans master_sejours, pas dans choix_client : il faut donc
+// résoudre la liste des identifiants avant de construire la requête, comme pour
+// le filtre « Réponse forms ».
+async function resoudreRattachement(filters) {
+  const veutRattachees = filters.rattachement.includes('rattachee');
+  const veutSupplantees = filters.rattachement.includes('supplantee');
+  // Rien de coché, ou les deux : aucune contrainte.
+  if (veutRattachees === veutSupplantees) return;
+
+  const ids = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase
+      .from('master_sejours')
+      .select('id_choix_client')
+      .not('id_choix_client', 'is', null)
+      .order('id_choix_client')
+      .range(de, de + 999);
+    if (error) throw error;
+    if (!data || !data.length) break;
+    ids.push(...data.map((r) => r.id_choix_client));
+    if (data.length < 1000) break;
+  }
+
+  if (ids.length > IDS_MAX_DANS_URL) {
+    const e = new Error('Trop de réponses rattachées pour appliquer ce filtre. '
+      + 'Restreignez la sélection avec un autre filtre, puis réessayez.');
+    e.statusCode = 400;
+    throw e;
+  }
+  filters.idsRattaches = ids;
+  filters.rattachementVoulu = veutRattachees ? 'rattachee' : 'supplantee';
+}
+
+// Ajoute à chaque réponse affichée l'information « un séjour pointe-t-il vers
+// moi ? ». L'écran s'en sert pour signaler les doublons lorsqu'on choisit de
+// les afficher : une ligne qui ne décrit plus aucun dossier doit se reconnaître
+// au premier coup d'œil, sans avoir à ouvrir la fiche.
+async function marquerRattachement(lignes) {
+  if (!lignes.length) return lignes;
+  const ids = lignes.map((r) => r.id);
+  const { data, error } = await supabase
+    .from('master_sejours')
+    .select('id_choix_client')
+    .in('id_choix_client', ids);
+  if (error) throw error;
+  const rattaches = new Set((data || []).map((r) => r.id_choix_client));
+  return lignes.map((r) => ({ ...r, rattachee: rattaches.has(r.id) }));
 }
 
 function applyClientsFilters(query, f) {
@@ -710,6 +767,18 @@ function applyClientsFilters(query, f) {
     query = query.not(demandees[0].colonne, 'is', null);
   } else if (demandees.length > 1 && demandees.length < SOURCES_FORMULAIRE.length) {
     query = query.or(demandees.map((src) => `${src.colonne}.not.is.null`).join(','));
+  }
+
+  // Rattachement : la liste a été résolue en amont par resoudreRattachement.
+  if (f.rattachementVoulu) {
+    const ids = f.idsRattaches || [];
+    if (f.rattachementVoulu === 'rattachee') {
+      // Aucune réponse rattachée : la sélection est forcément vide. `in` avec
+      // une liste vide est un cas limite mal géré, on force donc explicitement.
+      query = ids.length ? query.in('id', ids) : query.eq('id', -1);
+    } else if (ids.length) {
+      query = query.not('id', 'in', '(' + ids.join(',') + ')');
+    }
   }
 
   if (f.langue.length) query = query.in('langue', f.langue);
@@ -832,6 +901,7 @@ app.get('/api/clients', async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize, 10) || 50));
     const filters = parseClientsFilters(req.query);
+    await resoudreRattachement(filters);
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
@@ -845,7 +915,7 @@ app.get('/api/clients', async (req, res) => {
       throw error;
     }
 
-    res.json({ rows: data, total: count, page, pageSize });
+    res.json({ rows: await marquerRattachement(data || []), total: count, page, pageSize });
   } catch (err) {
     console.error(err);
     res.status(err.statusCode || 500).json({ error: messageErreurLisible(err) });
