@@ -46,15 +46,54 @@ Aucune URL ni aucun identifiant n'est écrit en dur dans le code. Sans les
 variables d'environnement, l'application s'arrête au démarrage en indiquant
 laquelle manque, plutôt que de tourner sur des valeurs par défaut.
 
-### Un seul environnement pour l'instant
+### Deux bases, et des garde-fous qui les séparent
 
-Il n'existe qu'une base : celle de production. Les campings précédents ont une
-base de recette séparée, et c'est ce qui permet d'y tester une évolution sans
-risque. **Tant que ce n'est pas le cas ici, toute modification de schéma ou tout
-import de masse se fait directement sur les données réelles.** À créer dès que le
-camping commencera à traiter des dossiers.
+| | Production | Recette |
+|---|---|---|
+| Projet Supabase | `cjuchlfenmbskdhgvaet` | `ukmbeelgcimrhxcvoiya` |
+| Qui l'utilise | le camping, en continu | les suites de tests |
+| Ce qui y écrit | l'application déployée sur Render | les suites, et elles seules |
 
----
+Tant que le camping n'avait rien saisi, les suites de recette tournaient contre
+la production : elles photographiaient avant, restauraient après, et la base
+revenait à son état. Dès lors que des dossiers réels sont traités, ce n'est plus
+tenable — une suite interrompue en plein vol laisserait des valeurs de test
+visibles à l'écran.
+
+`scripts/cibles.js` porte les deux adresses et les deux garde-fous :
+
+- `exigerRecette()` — appelé par les six suites de tests. Si la cible est la
+  production, le script s'arrête avant d'avoir ouvert la moindre connexion. Il
+  refuse également une base inconnue, pour qu'une faute de frappe ne passe pas.
+- `exigerProd()` — appelé par `import_master.js`, `diff_master.js` et
+  `update_master.js`, qui alimentent légitimement la production. Ces trois-là ne
+  lisent plus le `.env` : ils nomment leur cible, pour qu'un import ne puisse pas
+  tomber silencieusement dans la recette.
+
+**Le garde-fou est la première instruction de chaque suite**, placée avant le
+moindre `require`. Une dépendance manquante ferait sinon échouer le script
+*avant* la vérification de la cible : on croirait à un simple plantage, alors
+qu'on visait peut-être la production.
+
+### Rafraîchir la base de recette
+
+`node scripts/copier_prod_vers_recette.js` — simulation par défaut, `--ecrire`
+pour appliquer. La production n'est que lue, la recette est vidée puis
+recopiée : c'est un rafraîchissement, pas une fusion. Les identifiants sont
+conservés, sans quoi le lien `id_choix_client` entre un séjour et sa réponse ne
+voudrait plus rien dire. Le script compare ensuite les deux bases ligne à ligne.
+
+Après copie, **recaler les séquences**, sans quoi la première insertion
+repartirait de 1 et violerait la clé primaire :
+
+```sql
+select setval(pg_get_serial_sequence('public.master_sejours','id'), (select max(id) from public.master_sejours)),
+       setval(pg_get_serial_sequence('public.choix_client','id'),   (select max(id) from public.choix_client));
+```
+
+`scripts/empreinte_recette.js` donne une empreinte MD5 des deux tables : la
+relever avant et après un passage de recette prouve que les suites ont bien
+tout restauré.
 
 ## 3. Les deux tables
 
