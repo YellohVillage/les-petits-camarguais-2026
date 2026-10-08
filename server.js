@@ -551,13 +551,17 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
           const libelleMethode = methode === null ? 'Sans objet (relogement)' : methode;
           summary.methodes[libelleMethode] = (summary.methodes[libelleMethode] || 0) + 1;
 
+          // Hors du quartier sinistré, le camping est seul maître du dossier :
+          // on rattache la réponse pour qu'elle reste consultable, mais on ne
+          // touche ni à la décision ni à la méthode, qu'il renseigne lui-même.
+          // Sans ce cloisonnement, un client hors Aquabulle qui répondrait au
+          // formulaire effacerait d'un coup ce que le camping a consigné.
+          const dansLePerimetreDuFormulaire = await estDansLePerimetreDuFormulaire(matchedMasterId);
           const { error: updateError } = await supabase
             .from('master_sejours')
-            .update({
-              id_choix_client: inserted.id,
-              methode_remboursement: methode,
-              decision_client: decision,
-            })
+            .update(dansLePerimetreDuFormulaire
+              ? { id_choix_client: inserted.id, methode_remboursement: methode, decision_client: decision }
+              : { id_choix_client: inserted.id })
             .eq('id', matchedMasterId);
           if (updateError) {
             summary.erreurs.push(`Id ${rawId} : échec update master_sejours (${updateError.message})`);
@@ -1090,10 +1094,7 @@ app.put('/api/clients/:id', async (req, res) => {
     //    La méthode de remboursement part avec le lien : elle découle de la
     //    réponse du client, un séjour qui n'en a plus ne doit pas garder la
     //    valeur héritée du rapprochement précédent.
-    const { error: unlinkError } = await supabase
-      .from('master_sejours')
-      .update({ id_choix_client: null, methode_remboursement: null, decision_client: null })
-      .eq('id_choix_client', id);
+    const { error: unlinkError } = await delierReponse(id);
     if (unlinkError) throw unlinkError;
 
     // 2. Nouveau matching : numéro de réservation en priorité, puis email
@@ -1175,13 +1176,14 @@ app.put('/api/clients/:id', async (req, res) => {
       methodeCalculee = calculerMethodeRemboursement(updatedRow, matchedModesPaiement);
       decisionCalculee = calculerDecisionClient(updatedRow);
 
+      // Même cloisonnement qu'à l'import : hors Aquabulle, la correction d'un
+      // rapprochement rattache la réponse sans rien recalculer.
+      const dansLePerimetre = await estDansLePerimetreDuFormulaire(matchedMasterId);
       const { error: linkError } = await supabase
         .from('master_sejours')
-        .update({
-          id_choix_client: id,
-          methode_remboursement: methodeCalculee,
-          decision_client: decisionCalculee,
-        })
+        .update(dansLePerimetre
+          ? { id_choix_client: id, methode_remboursement: methodeCalculee, decision_client: decisionCalculee }
+          : { id_choix_client: id })
         .eq('id', matchedMasterId);
       if (linkError) throw linkError;
     }
@@ -1221,10 +1223,7 @@ app.delete('/api/clients/:id', async (req, res) => {
     // La méthode de remboursement et la décision découlent de la réponse : elles
     // partent avec elle. Sans ça, un séjour dont on supprime la réponse garderait
     // « Virement » ou « Annulé » sans qu'aucun client ne l'ait jamais demandé.
-    const { error: unlinkError } = await supabase
-      .from('master_sejours')
-      .update({ id_choix_client: null, methode_remboursement: null, decision_client: null })
-      .eq('id_choix_client', id);
+    const { error: unlinkError } = await delierReponse(id);
     if (unlinkError) throw unlinkError;
 
     const { error: deleteError } = await supabase
@@ -1291,9 +1290,16 @@ const SEJOUR_DATE_FIELDS = [
 const REMBOURSEMENT_VALUES = new Set(['Oui', 'Non', 'Partiel']);
 
 // Action que le camping se réserve sur un séjour. Volontairement distincte du
-// statut de la réponse au formulaire, qui appartient au call center : ici le
-// camping signale un client qu'il ne veut pas oublier de rappeler.
-const ACTIONS_CAMPING = ['A rappeler'];
+// statut de la réponse au formulaire, qui appartient au call center.
+//
+// « A rappeler » est un simple drapeau. « Remise » et « Annulé » sont, elles, le
+// suivi des séjours HORS Aquabulle : ces clients ne reçoivent pas de formulaire,
+// le camping les traite de lui-même et consigne ici ce qu'il a fait. D'où le
+// cloisonnement plus bas : rien de ce que calcule le rapprochement ne doit venir
+// écraser une saisie du camping sur ces dossiers.
+const ACTION_REMISE = 'Remise';
+const ACTION_ANNULE = 'Annulé';
+const ACTIONS_CAMPING = ['A rappeler', ACTION_REMISE, ACTION_ANNULE];
 
 // Valeur envoyée par le navigateur pour filtrer sur « pas encore renseigné ».
 // Volontairement encadrée de doubles tirets bas pour ne jamais entrer en
@@ -1770,6 +1776,32 @@ async function resoudreSourceForms(filters) {
   throw e;
 }
 
+// Le formulaire ne s'adresse qu'au quartier sinistré. Ce qu'il fait déduire —
+// décision du client, méthode de remboursement — ne vaut donc que là.
+async function estDansLePerimetreDuFormulaire(idSejour) {
+  const { data, error } = await supabase
+    .from('master_sejours').select('quartier').eq('id', idSejour).single();
+  if (error) throw error;
+  return data && data.quartier === QUARTIER_AQUABULLE;
+}
+
+// Déliement d'une réponse : on retire le lien, et on ne vide la décision et la
+// méthode que sur les séjours où elles venaient du formulaire. Ailleurs, elles
+// ont été saisies par le camping et ne lui appartiennent qu'à lui.
+async function delierReponse(idReponse) {
+  const { data, error } = await supabase
+    .from('master_sejours').select('id, quartier').eq('id_choix_client', idReponse);
+  if (error) return { error };
+  for (const sejour of data || []) {
+    const patch = sejour.quartier === QUARTIER_AQUABULLE
+      ? { id_choix_client: null, methode_remboursement: null, decision_client: null }
+      : { id_choix_client: null };
+    const { error: e } = await supabase.from('master_sejours').update(patch).eq('id', sejour.id);
+    if (e) return { error: e };
+  }
+  return {};
+}
+
 function buildSejoursQuery(filters, { count = false } = {}) {
   let query = supabase
     .from('master_sejours')
@@ -1996,6 +2028,45 @@ app.get('/api/aquabulle/avancement', async (req, res) => {
       relogements_a_faire: rows.filter((r) => estRelogement(r) && r.relogement_statut !== 'Relogé'
                                                               && r.relogement_statut !== 'Refusé par le client').length,
       remises_a_appliquer: rows.filter((r) => estRelogement(r) && r.remise_statut !== 'Appliquée').length,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(err.statusCode || 500).json({ error: messageErreurLisible(err) });
+  }
+});
+
+// GET /api/sejours/avancement : les compteurs affichés en tête de la liste
+// générale. Ils portent sur les séjours HORS Aquabulle — ceux que le camping
+// traite seul, sans formulaire. Les dossiers du quartier sinistré ont déjà leur
+// propre tableau de bord ; mélanger les deux populations donnerait des chiffres
+// que personne ne saurait lire.
+app.get('/api/sejours/avancement', async (req, res) => {
+  try {
+    const rows = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await supabase
+        .from('master_sejours')
+        .select('action_camping, remboursement')
+        .neq('quartier', QUARTIER_AQUABULLE)
+        .order('id')
+        .range(de, de + 999);
+      if (error) throw error;
+      if (!data || !data.length) break;
+      rows.push(...data);
+      if (data.length < 1000) break;
+    }
+
+    const estAnnule = (r) => r.action_camping === ACTION_ANNULE;
+    res.json({
+      total: rows.length,
+      // Un dossier sans action est un dossier que personne n'a encore ouvert.
+      sans_action: rows.filter((r) => !r.action_camping).length,
+      remises: rows.filter((r) => r.action_camping === ACTION_REMISE).length,
+      annules: rows.filter(estAnnule).length,
+      a_rappeler: rows.filter((r) => r.action_camping === 'A rappeler').length,
+      // Une annulation n'est soldée que lorsque le remboursement est fait.
+      annules_a_rembourser: rows.filter((r) => estAnnule(r) && r.remboursement !== 'Oui').length,
+      annules_rembourses: rows.filter((r) => estAnnule(r) && r.remboursement === 'Oui').length,
     });
   } catch (err) {
     console.error(err);

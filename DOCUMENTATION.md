@@ -277,6 +277,35 @@ champ revient donc toujours vide. Sans cette règle, le calcul concluait
 ceux d'une annulation dont la déclaration du client contredit les paiements du
 PMS.
 
+### Deux dispositifs, volontairement cloisonnés
+
+| | Quartier Aquabulle (304) | Reste du camping (714) |
+|---|---|---|
+| Le client reçoit le formulaire | oui | non |
+| Qui décide | le client, via sa réponse | le camping |
+| Colonnes pilotées | `decision_client`, `methode_remboursement`, suivi du relogement et de la remise | `action_camping`, `remise_taux`, `remboursement`, `methode_remboursement` |
+| Calcul automatique | oui, au rapprochement | **aucun** |
+
+Hors Aquabulle, le camping traite les dossiers lui-même et consigne ce qu'il a
+fait dans **Action camping** : *A rappeler*, *Remise* (un taux apparaît alors,
+20 % par défaut, modifiable au cas par cas) ou *Annulé* (il renseigne ensuite le
+remboursement puis la méthode employée). Aucun contrôle ne vient confronter sa
+saisie aux paiements du PMS : il décrit ce qu'il a fait, l'outil l'enregistre.
+
+> **Le cloisonnement est une règle de code, pas une convention.** Une réponse au
+> formulaire qui tombe sur un séjour hors Aquabulle — un client qui n'était pas
+> destinataire mais qui répond quand même — est bien rattachée, pour rester
+> consultable, mais **ne déduit ni décision ni méthode**. Sans cette règle, elle
+> effacerait d'un coup ce que le camping a consigné. Même chose au déliement :
+> supprimer une réponse ne vide la décision et la méthode que sur les séjours où
+> elles venaient du formulaire. Treize contrôles de `qa_hors_aquabulle` vérifient
+> ce cloisonnement dans les deux sens.
+
+Le **taux de remise** est la même colonne dans les deux dispositifs : un séjour
+n'a qu'un taux, quelle qu'en soit l'origine. Ce qui diffère, c'est ce qui
+l'accompagne — un suivi en deux étapes pour un relogement, rien pour une remise
+accordée par le camping.
+
 ### Le périmètre de la crise
 
 Le camping compte quatre quartiers. **Secret de Camargue est fermé.** Le sinistre
@@ -386,6 +415,14 @@ reprises.
 **Liste séjours** — le référentiel complet, avec recherche, filtres, tri par
 colonne, masquage de colonnes et export Excel. La fiche s'ouvre en pop-in.
 
+En tête d'écran, **sept compteurs portant sur les séjours hors Aquabulle** (714).
+Ils sont cliquables et appliquent exactement les filtres qui produisent les
+lignes qu'ils comptent. Le périmètre est volontairement celui du *reste* du
+camping : les dossiers du quartier sinistré ont leur propre tableau de bord, et
+mélanger les deux populations donnerait des chiffres que personne ne saurait
+lire. « Hors Aquabulle » s'exprime en cochant les trois autres quartiers, le
+filtre travaillant par inclusion.
+
 **Dossiers Aquabulle** — la vue de travail des 304 dossiers du quartier sinistré,
 et seuls eux. En tête, neuf compteurs d'avancement cliquables : chacun applique exactement
 les filtres qui produisent les lignes qu'il compte, donc le chiffre affiché et la
@@ -461,9 +498,16 @@ quatre colonnes que le fichier porte vides mais que le camping renseigne
 (`remboursement`, les deux dates de relogement, `camping_relogement`) : sans cette
 protection, chaque mise à jour effacerait le travail du camping.
 
-**La recette tourne en cinq suites, 389 contrôles.** `qa_master` (la table
+**Les suites de recette raisonnent en écarts, jamais en absolu.** La base est en
+service : le nombre de réponses et de dossiers traités change d'heure en heure.
+Chaque suite relève son point de départ, agit, puis vérifie l'écart et restaure.
+Elles ne travaillent que sur des **séjours vierges** — ni réponse, ni décision,
+ni action — pour ne jamais marcher sur un dossier en cours de traitement.
+
+**La recette tourne en six suites, 500 contrôles.** `qa_master` (la table
 maître), `qa_formulaire` (les règles de calcul, sans serveur), `qa_aquabulle`
-(l'onglet dédié), `qa_chaine` (la chaîne complète : import d'un vrai fichier
+(l'onglet dédié), `qa_hors_aquabulle` (le suivi par le camping et le
+cloisonnement), `qa_chaine` (la chaîne complète : import d'un vrai fichier
 Excel fabriqué pour l'occasion, delta entre deux imports, rapprochement,
 calculs, étapes du dossier, garde-fous) et `qa_front` (les cinq écrans pilotés
 dans un vrai DOM : affichage, pagination, tri, filtres, pop-ins, masquage de

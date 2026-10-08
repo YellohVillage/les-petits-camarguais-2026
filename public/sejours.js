@@ -844,6 +844,7 @@
     CHAMPS_MONTANT_CALCULE.forEach((key) => poserMontantCalcule(key, row[key]));
     refreshCommentaireVisibility();
     refreshCommentaireCampingVisibility();
+    refreshActionCampingAide();
     // Le détail n'a de sens que si le séjour a connu un relogement.
     const blocDetail = document.getElementById('field-relogements_detail');
     if (blocDetail) blocDetail.hidden = !fields.relogements_detail.value;
@@ -873,17 +874,51 @@
   const BLOCS_SUIVI_RELOGEMENT = ['field-suivi-relogement', 'field-relogement-statut',
     'field-relogement-hebergement', 'field-remise-statut', 'field-remise-taux'];
 
+  // Deux chemins mènent à une remise, et il ne faut pas les confondre :
+  //   - le quartier Aquabulle, où elle découle de la réponse au formulaire
+  //     (« Relogement + remise ») et s'accompagne d'un suivi en deux étapes ;
+  //   - le reste du camping, où le camping l'accorde de lui-même en posant
+  //     l'action « Remise ». Pas de formulaire, pas de relogement à suivre,
+  //     seulement un taux à consigner.
+  // Les deux écrivent dans la même colonne : un séjour n'a qu'un taux de remise,
+  // quelle qu'en soit l'origine.
   function refreshSuiviRelogement() {
-    const concerne = fields.decision_client.value === 'Relogement + remise';
+    const relogement = fields.decision_client.value === 'Relogement + remise';
+    const remiseCamping = fields.action_camping.value === 'Remise';
+
     BLOCS_SUIVI_RELOGEMENT.forEach((id) => {
       const bloc = document.getElementById(id);
-      if (bloc) bloc.hidden = !concerne;
+      if (!bloc) return;
+      // Le taux sert aux deux chemins ; le reste du suivi n'a de sens que pour
+      // un relogement.
+      bloc.hidden = id === 'field-remise-taux' ? !(relogement || remiseCamping) : !relogement;
     });
-    // Première ouverture d'un dossier relogé : on propose le taux habituel
+    // Le bloc « Suivi du relogement » sert de titre : il reste visible dès que
+    // l'un de ses champs l'est.
+    const titre = document.getElementById('field-suivi-relogement');
+    if (titre) titre.hidden = !(relogement || remiseCamping);
+
+    // Première ouverture d'un dossier avec remise : on propose le taux habituel
     // plutôt qu'une case vide, tout en laissant le camping le corriger.
-    if (concerne && fields.remise_taux.value === '') {
+    if ((relogement || remiseCamping) && fields.remise_taux.value === '') {
       fields.remise_taux.value = String(tauxRemiseDefaut);
     }
+  }
+
+  // Ce que chaque action implique, rappelé sous le champ : le camping n'a pas à
+  // deviner quelles cases remplir ensuite.
+  const AIDES_ACTION = {
+    'A rappeler': 'Simple signalement : indiquez le motif ci-dessous.',
+    'Remise': 'Remise commerciale accordée par le camping. Renseignez le taux ci-dessous ; 20 % par défaut.',
+    'Annulé': 'Séjour annulé par le camping. Renseignez ensuite « Remboursement », puis la méthode employée.',
+  };
+  const actionAide = document.getElementById('action-camping-aide');
+
+  function refreshActionCampingAide() {
+    if (!actionAide) return;
+    const v = fields.action_camping.value;
+    actionAide.textContent = AIDES_ACTION[v] || '';
+    actionAide.hidden = !AIDES_ACTION[v];
   }
 
   function closeModal() {
@@ -899,7 +934,11 @@
   // saisies en cours sont simplement abandonnées, et les champs seront
   // repeuplés depuis la base à la prochaine ouverture.
   fields.remboursement.addEventListener('change', refreshCommentaireVisibility);
-  fields.action_camping.addEventListener('change', refreshCommentaireCampingVisibility);
+  fields.action_camping.addEventListener('change', () => {
+    refreshCommentaireCampingVisibility();
+    refreshActionCampingAide();
+    refreshSuiviRelogement();
+  });
   fields.decision_client.addEventListener('change', refreshDecisionAide);
   fields.decision_client.addEventListener('change', refreshSuiviRelogement);
   fields.methode_remboursement.addEventListener('change', () => {
@@ -983,6 +1022,10 @@
       setTimeout(() => {
         closeModal();
         loadPage();
+        // L'action du camping vient peut-être de changer : un dossier traité
+        // doit quitter le compteur « Aucune action » tout de suite, sinon il
+        // sera retraité.
+        loadAvancement();
       }, 1000);
     } catch (err) {
       modalMessage.textContent = 'Erreur réseau : ' + err.message;
@@ -1291,12 +1334,17 @@
 
   filtersApply.addEventListener('click', () => {
     currentPage = 1;
+    compteurActif = null;
+    majCompteurActif();
     refreshFilterBadge();
     filtersPanel.hidden = true;   // referme le panneau après application
     loadPage();
   });
 
-  filtersReset.addEventListener('click', () => {
+  // Vide toutes les cases et tous les champs, sans recharger : les compteurs
+  // d'avancement s'en servent pour repartir d'une sélection propre avant de
+  // poser la leur. Le bouton « Réinitialiser » l'appelle puis recharge.
+  function viderTousLesFiltres() {
     ['arriveeDu','arriveeAu','departDu','departAu','ttcMin','ttcMax','regleMin','regleMax']
       .forEach((k) => { fl[k].value = ''; });
     [fl.nbPersonnes, fl.remboursement, fl.methodeRemboursement, fl.decisionClient, fl.statutClient, fl.situationDesc, fl.categoriePms, fl.quartier, fl.relogementStatut, fl.remiseStatut, fl.modesPaiement, fl.fidelite, fl.reponseForms, fl.sourceForms, fl.actionCamping, fl.statutEmplacement, fl.camping].forEach((container) => {
@@ -1306,17 +1354,133 @@
       });
     });
     ['mailing1','mailing2','mailing3'].forEach((k) => { fl[k].checked = false; });
-    // Réinitialiser, c'est aussi revenir à l'état d'ouverture initial : les
-    // listes longues se referment, sinon le panneau rouvre déplié sans qu'aucun
-    // filtre n'y soit coché.
+    // Revenir à l'état d'ouverture initial : les listes longues se referment,
+    // sinon le panneau rouvre déplié sans qu'aucun filtre n'y soit coché.
     replis.forEach((r) => { r.replier(); r.majCompteur(); });
     const opOu = document.querySelector('input[name="fl-modes-op"][value="ou"]');
     if (opOu) { opOu.checked = true; opOu.dispatchEvent(new Event('change')); }
+  }
+
+  filtersReset.addEventListener('click', () => {
+    viderTousLesFiltres();
+    compteurActif = null;
+    majCompteurActif();
     currentPage = 1;
     refreshFilterBadge();
     filtersPanel.hidden = true;   // referme le panneau, comme Appliquer
     loadPage();
   });
+
+  // -------------------------------------------------------------------------
+  // Avancement des séjours HORS Aquabulle
+  //
+  // Ces clients ne reçoivent pas de formulaire : le camping les traite seul et
+  // consigne ce qu'il a fait dans « Action camping ». Les compteurs lui donnent
+  // la vue d'ensemble qui lui manquait, et chacun applique exactement les
+  // filtres qui produisent les lignes qu'il compte — le chiffre affiché et la
+  // liste obtenue ne peuvent donc pas se contredire.
+  // -------------------------------------------------------------------------
+  const avancementEl = document.getElementById('avancement');
+  let compteurActif = null;
+
+  const COMPTEURS_HORS_AQUABULLE = [
+    { cle: 'total', libelle: 'Séjours hors Aquabulle', filtres: {} },
+    { cle: 'sans_action', libelle: 'Aucune action', ton: 'stat-warn', filtres: { actionCamping: ['__vide__'] } },
+    { cle: 'remises', libelle: 'Remises accordées', ton: 'stat-ok', filtres: { actionCamping: ['Remise'] } },
+    { cle: 'annules', libelle: 'Annulations', filtres: { actionCamping: ['Annulé'] } },
+    { cle: 'annules_a_rembourser', libelle: 'Annulés à rembourser', ton: 'stat-warn',
+      filtres: { actionCamping: ['Annulé'], remboursement: ['__vide__', 'Non', 'Partiel'] } },
+    { cle: 'annules_rembourses', libelle: 'Annulés et remboursés', ton: 'stat-ok',
+      filtres: { actionCamping: ['Annulé'], remboursement: ['Oui'] } },
+    { cle: 'a_rappeler', libelle: 'À rappeler', ton: 'stat-info', filtres: { actionCamping: ['A rappeler'] } },
+  ];
+
+  // « Hors Aquabulle » s'exprime en cochant tous les autres quartiers : le
+  // filtre travaille par inclusion, et il n'existe pas de case « sauf ».
+  function cocherQuartiersHorsAquabulle() {
+    let coches = 0;
+    fl.quartier.querySelectorAll('input[type="checkbox"]').forEach((i) => {
+      const retenu = i.value !== 'Aquabulle';
+      i.checked = retenu;
+      i.closest('.filter-chip').classList.toggle('checked', retenu);
+      if (retenu) coches += 1;
+    });
+    return coches > 0;
+  }
+
+  function cocher(conteneur, valeurs) {
+    conteneur.querySelectorAll('input[type="checkbox"]').forEach((i) => {
+      const retenu = valeurs.includes(i.value);
+      i.checked = retenu;
+      i.closest('.filter-chip').classList.toggle('checked', retenu);
+    });
+  }
+
+  function majCompteurActif() {
+    if (!avancementEl) return;
+    avancementEl.querySelectorAll('.stat-clickable').forEach((b) => {
+      const actif = b.dataset.compteur === compteurActif;
+      b.classList.toggle('actif', actif);
+      b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+    });
+  }
+
+  function renderAvancement(data) {
+    if (!avancementEl) return;
+    avancementEl.innerHTML = '';
+    COMPTEURS_HORS_AQUABULLE.forEach((c) => {
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.className = 'stat stat-clickable' + (c.ton ? ' ' + c.ton : '');
+      bouton.dataset.compteur = c.cle;
+      bouton.setAttribute('aria-pressed', 'false');
+      bouton.title = 'Filtrer sur « ' + c.libelle + ' »';
+      const valeur = document.createElement('span');
+      valeur.className = 'stat-value';
+      valeur.textContent = String(data[c.cle] === undefined ? 0 : data[c.cle]);
+      const libelle = document.createElement('span');
+      libelle.className = 'stat-label';
+      libelle.textContent = c.libelle;
+      bouton.appendChild(valeur);
+      bouton.appendChild(libelle);
+
+      bouton.addEventListener('click', () => {
+        // Recliquer le compteur actif annule le raccourci, comme il l'a posé.
+        const annule = compteurActif === c.cle;
+        compteurActif = annule ? null : c.cle;
+        viderTousLesFiltres();
+        searchInput.value = '';
+        if (!annule) {
+          cocherQuartiersHorsAquabulle();
+          if (c.filtres.actionCamping) cocher(fl.actionCamping, c.filtres.actionCamping);
+          if (c.filtres.remboursement) cocher(fl.remboursement, c.filtres.remboursement);
+        }
+        currentPage = 1;
+        majCompteurActif();
+        refreshFilterBadge();
+        loadPage();
+      });
+
+      avancementEl.appendChild(bouton);
+    });
+    majCompteurActif();
+  }
+
+  async function loadAvancement() {
+    if (!avancementEl) return;
+    try {
+      const resp = await fetch('/api/sejours/avancement');
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Avancement indisponible.');
+      renderAvancement(data);
+    } catch (err) {
+      avancementEl.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'subtitle';
+      p.textContent = 'Avancement indisponible : ' + err.message;
+      avancementEl.appendChild(p);
+    }
+  }
 
   async function exportSelection() {
     exportBtn.disabled = true;
@@ -1616,5 +1780,6 @@
   applyHiddenColumns();
   activerTriEntetes();
   loadFilterOptions();
+  loadAvancement();
   loadPage();
 })();

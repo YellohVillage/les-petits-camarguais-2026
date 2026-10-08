@@ -32,6 +32,11 @@
       <button type="button" id="export-btn" class="btn-primary btn-export">Exporter la sélection</button>
     </div>
 
+    <!-- Avancement des séjours HORS Aquabulle : ceux que le camping traite
+         seul, sans formulaire. Chaque compteur est cliquable et applique le
+         filtre correspondant. -->
+    <section id="avancement" class="stats-grid" aria-label="Avancement des séjours hors Aquabulle"></section>
+
     <div class="dashboard-toolbar">
       <input type="text" id="search-input" class="search-input" placeholder="Rechercher par nom, prénom, email ou numéro de réservation..." />
       <span class="total-count"><strong id="total-count">–</strong> résultat(s)</span>
@@ -173,8 +178,14 @@
         </div>
         <div class="filter-block">
           <label class="filter-label">Action camping</label>
+          <!-- Ces cases reprennent ACTIONS_CAMPING, côté serveur. La liste est
+               courte et stable, d'où ce balisage statique ; un contrôle de
+               recette compare les deux pour qu'elles ne puissent pas diverger
+               en silence si une action était ajoutée. -->
           <div id="fl-action-camping" class="filter-chips">
             <label class="filter-chip"><input type="checkbox" value="A rappeler" /> A rappeler</label>
+            <label class="filter-chip"><input type="checkbox" value="Remise" /> Remise</label>
+            <label class="filter-chip"><input type="checkbox" value="Annulé" /> Annulé</label>
             <label class="filter-chip filter-chip-special"><input type="checkbox" value="__vide__" /> aucune</label>
           </div>
         </div>
@@ -486,7 +497,10 @@
             <select id="f-action_camping">
               <option value="">–</option>
               <option value="A rappeler">A rappeler</option>
+              <option value="Remise">Remise</option>
+              <option value="Annulé">Annulé</option>
             </select>
+            <p id="action-camping-aide" class="modal-aide" hidden></p>
           </div>
           <div class="modal-field full" id="field-commentaire_camping" hidden>
             <label for="f-commentaire_camping">Motif du rappel</label>
